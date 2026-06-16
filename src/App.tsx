@@ -67,11 +67,17 @@ export function LogoIcon({ className = "w-9 h-9" }: { className?: string }) {
 }
 
 // Interfaces
+export interface Obra {
+  id: string;
+  nome: string;
+}
+
 export interface Pedido {
   id: string;
   insumo: string;
   codigo: string;
   obra: string;
+  obraId?: string;
   qtdSolicitada: number;
   qtdRecebida: number;
   unidade: string;
@@ -84,6 +90,7 @@ export interface Baixa {
   insumo: string;
   codigo: string;
   obra: string;
+  obraId?: string;
   quantidade: number;
   unidade: string;
   colaborador: string;
@@ -130,17 +137,33 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Dynamic list of active Construction sites (Obras)
-  const [obras, setObras] = useState<string[]>(() => {
-    const saved = localStorage.getItem('construmais_obras');
-    return saved ? JSON.parse(saved) : [
-      'Residencial Alvorada',
-      'Torre Infinito',
-      'Complexo Hospitalar'
+  const [obras, setObras] = useState<Obra[]>(() => {
+    const saved = localStorage.getItem('construmais_obras_v3');
+    if (saved) return JSON.parse(saved);
+    
+    // Migração de dados legados do localStorage antigo de string[] para o novo Obra[]
+    const legacySaved = localStorage.getItem('construmais_obras');
+    if (legacySaved) {
+      try {
+        const parsed = JSON.parse(legacySaved);
+        if (Array.isArray(parsed)) {
+          if (typeof parsed[0] === 'string') {
+            return parsed.map((o, idx) => ({ id: `OB-${101 + idx}`, nome: o }));
+          } else if (parsed[0] && parsed[0].id) {
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    return [
+      { id: 'OB-101', nome: 'Residencial Alvorada' },
+      { id: 'OB-102', nome: 'Torre Infinito' },
+      { id: 'OB-103', nome: 'Complexo Hospitalar' }
     ];
   });
 
   // Backward compatibility bridge
-  const listObras = obras;
+  const listObras = obras.map(o => o.nome);
 
   // Active Users database and custom permissions state
   const [usuarios, setUsuarios] = useState<Usuario[]>(() => {
@@ -231,7 +254,8 @@ export default function App() {
 
   // LocalStorage Persistence effect triggers on any change
   useEffect(() => {
-    localStorage.setItem('construmais_obras', JSON.stringify(obras));
+    localStorage.setItem('construmais_obras_v3', JSON.stringify(obras));
+    localStorage.setItem('construmais_obras', JSON.stringify(obras.map(o => o.nome)));
   }, [obras]);
 
   useEffect(() => {
@@ -257,6 +281,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('construmais_auto_sync', String(autoSync));
   }, [autoSync]);
+
+  // Debounced auto-sync when local state changes and autoSync is enabled
+  useEffect(() => {
+    if (autoSync && googleSheetsUrl) {
+      const timer = setTimeout(() => {
+        handleSheetsSync('push', true);
+      }, 3500); // 3.5 Segundos de debounce para agrupar clicks rápidos
+      return () => clearTimeout(timer);
+    }
+  }, [pedidos, baixas, obras, usuarios, autoSync, googleSheetsUrl]);
 
   // Modals Visibility
   const [showOrderModal, setShowOrderModal] = useState<boolean>(false);
@@ -465,11 +499,13 @@ export default function App() {
 
       const randomId = `PC-2024-0${Math.floor(Math.random() * 900) + 100}`;
       const resolvedCodigo = newOrderCodigo.trim().toUpperCase() || `INS-${Math.floor(Math.random() * 900) + 100}`;
+      const matchedObra = obras.find(o => o.nome === newOrderObra);
       const newPedido: Pedido = {
         id: randomId,
         insumo: newOrderInsumo.trim(),
         codigo: resolvedCodigo,
         obra: newOrderObra,
+        obraId: matchedObra ? matchedObra.id : undefined,
         qtdSolicitada: newOrderQtd,
         qtdRecebida: 0,
         unidade: newOrderUnidade,
@@ -509,11 +545,13 @@ export default function App() {
       }
 
       const randomId = `BX-2024-0${Math.floor(Math.random() * 900) + 100}`;
+      const matchedObra = obras.find(o => o.nome === newWithdrawObra);
       const newBaixa: Baixa = {
         id: randomId,
         insumo: newWithdrawInsumo,
         codigo: targetStockItem.codigo || '',
         obra: newWithdrawObra,
+        obraId: matchedObra ? matchedObra.id : undefined,
         quantidade: newWithdrawQtd,
         unidade: targetStockItem.unidade,
         colaborador: newWithdrawColab.trim(),
@@ -636,12 +674,29 @@ export default function App() {
     
     // Register any new construction sites referenced in the spreadsheet
     const uniqueObrasInImport = Array.from(new Set(importedItems.map(r => r.obra)));
-    const newObrasToRegister = uniqueObrasInImport.filter(o => o && !obras.includes(o));
+    const finalObrasList = [...obras];
+    const activeObrasNames = obras.map(o => o.nome.toLowerCase().trim());
+    const newObrasToRegister = uniqueObrasInImport.filter(o => o && !activeObrasNames.includes(o.toLowerCase().trim()));
     if (newObrasToRegister.length > 0) {
-      setObras([...obras, ...newObrasToRegister]);
+      const startId = obras.length + 101;
+      const formattedNewObras = newObrasToRegister.map((name, idx) => ({
+        id: `OB-${startId + idx}`,
+        nome: name
+      }));
+      finalObrasList.push(...formattedNewObras);
+      setObras(finalObrasList);
     }
+
+    // Map all final items to their resolved or newly built obraId
+    const finalMappedList = updatedList.map(item => {
+      const matched = finalObrasList.find(o => o.nome.toLowerCase().trim() === item.obra.toLowerCase().trim());
+      return {
+        ...item,
+        obraId: matched ? matched.id : item.obraId
+      };
+    });
     
-    setPedidos(updatedList);
+    setPedidos(finalMappedList);
     setImportStats({
       newOrders: newOrdersCount,
       newItems: newItemsCount,
@@ -726,11 +781,13 @@ export default function App() {
         finalCodigo = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
       }
       
+      const matched = obras.find(o => o.nome.toLowerCase().trim() === finalObra.toLowerCase().trim());
       results.push({
         id: finalId,
         insumo: rawInsumo,
         codigo: finalCodigo,
         obra: finalObra,
+        obraId: matched ? matched.id : undefined,
         qtdSolicitada: isNaN(rawQtd) || rawQtd <= 0 ? 1 : rawQtd,
         qtdRecebida: 0,
         unidade: rawUnidade || 'un',
@@ -782,25 +839,25 @@ export default function App() {
   };
 
   // Synchronizes state with Google Sheets App Script URL
-  const handleSheetsSync = async (direction: 'pull' | 'push') => {
+  const handleSheetsSync = async (direction: 'pull' | 'push', isSilent: boolean = false) => {
     if (!googleSheetsUrl) {
-      triggerToast('Insira a URL do Apps Script primeiro para realizar a sincronização.', 'warn');
+      if (!isSilent) triggerToast('Insira a URL do Apps Script primeiro para realizar a sincronização.', 'warn');
       return;
     }
     
-    setIsSyncing(true);
+    if (!isSilent) setIsSyncing(true);
     try {
       if (direction === 'pull') {
         const response = await fetch(`${googleSheetsUrl}?action=getData`);
         if (!response.ok) throw new Error('Não foi possível conectar ao Google Sheets.');
         const result = await response.json();
         
-        if (result.status === 'success') {
+        if (result.status === 'success' || result.status === 'ok' || result.obras) {
           if (result.pedidos) setPedidos(result.pedidos);
           if (result.baixas) setBaixas(result.baixas);
           if (result.obras) setObras(result.obras);
           if (result.usuarios) setUsuarios(result.usuarios);
-          triggerToast('Dados sincronizados da planilha com sucesso!', 'success');
+          if (!isSilent) triggerToast('Dados sincronizados da planilha com sucesso!', 'success');
         } else {
           throw new Error(result.message || 'Erro na resposta do servidor.');
         }
@@ -822,13 +879,13 @@ export default function App() {
           body: JSON.stringify(payload)
         });
         
-        triggerToast('Dados enviados para a planilha com sucesso! (Deploy atualizado)', 'success');
+        if (!isSilent) triggerToast('Dados enviados para a planilha com sucesso! (Deploy atualizado)', 'success');
       }
     } catch (err: any) {
       console.error(err);
-      triggerToast(`Erro na sincronização: ${err.message || 'Verifique se a URL já foi publicada para acesso "Qualquer pessoa/Anyone".'}`, 'warn');
+      if (!isSilent) triggerToast(`Erro na sincronização: ${err.message || 'Verifique se a URL já foi publicada para acesso "Qualquer pessoa/Anyone".'}`, 'warn');
     } finally {
-      setIsSyncing(false);
+      if (!isSilent) setIsSyncing(false);
     }
   };
 
@@ -930,21 +987,31 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
   };
 
   // Administrative functions for Obras management
-  const handleCreateObra = (name: string) => {
+  const handleCreateObra = (name: string, idStr?: string) => {
     executeGuardedAction('admin', 'Criar Nova Instalação/Obra', () => {
       const trimmed = name.trim();
+      const rawId = idStr ? idStr.trim() : "";
+      const generatedId = `OB-${101 + obras.length}`;
+      const finalId = rawId ? rawId.toUpperCase() : generatedId;
+
       if (!trimmed) {
         triggerToast("Nome da obra não pode estar vazio.", "warn");
         return;
       }
-      if (obras.map(o => o.toLowerCase()).includes(trimmed.toLowerCase())) {
+      if (obras.map(o => o.nome.toLowerCase()).includes(trimmed.toLowerCase())) {
         triggerToast("Esta obra já está cadastrada no sistema.", "warn");
         return;
       }
-      setObras([...obras, trimmed]);
+      if (obras.map(o => o.id.toLowerCase()).includes(finalId.toLowerCase())) {
+        triggerToast("Este ID de obra já está cadastrado no sistema. Escolha outro.", "warn");
+        return;
+      }
+
+      const newObraItem: Obra = { id: finalId, nome: trimmed };
+      setObras([...obras, newObraItem]);
       setNewObraName('');
       setShowAddObraModal(false);
-      triggerToast(`Obra "${trimmed}" cadastrada com êxito!`, "success");
+      triggerToast(`Obra "${trimmed}" (ID: ${finalId}) cadastrada com êxito!`, "success");
     });
   };
 
@@ -955,13 +1022,13 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
         triggerToast("O novo nome não pode estar vazio.", "warn");
         return;
       }
-      if (obras.map(o => o.toLowerCase()).includes(trimmedNew.toLowerCase()) && trimmedNew.toLowerCase() !== oldName.toLowerCase()) {
+      if (obras.map(o => o.nome.toLowerCase()).includes(trimmedNew.toLowerCase()) && trimmedNew.toLowerCase() !== oldName.toLowerCase()) {
         triggerToast("Este nome de obra já está em uso.", "warn");
         return;
       }
       
       // Update obras array
-      setObras(obras.map(o => o === oldName ? trimmedNew : o));
+      setObras(obras.map(o => o.nome === oldName ? { ...o, nome: trimmedNew } : o));
       
       // Cascade update pedidos and baixas
       setPedidos(pedidos.map(p => p.obra === oldName ? { ...p, obra: trimmedNew } : p));
@@ -984,11 +1051,12 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
         return;
       }
       
-      setObras(obras.filter(o => o !== obraName));
+      const updatedObras = obras.filter(o => o.nome !== obraName);
+      setObras(updatedObras);
       
       if (selectedObra === obraName) setSelectedObra("Todas as Obras");
-      if (newOrderObra === obraName) setNewOrderObra(obras.filter(o => o !== obraName)[0]);
-      if (newWithdrawObra === obraName) setNewWithdrawObra(obras.filter(o => o !== obraName)[0]);
+      if (newOrderObra === obraName) setNewOrderObra(updatedObras[0]?.nome || '');
+      if (newWithdrawObra === obraName) setNewWithdrawObra(updatedObras[0]?.nome || '');
       
       triggerToast(`Obra "${obraName}" removida do sistema.`, "success");
     });
@@ -2487,18 +2555,18 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
                     {/* Obras lists */}
                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      {obras.map((obr) => (
-                        <div key={obr} className="flex items-center justify-between p-3 bg-[#0F1115] rounded-lg border border-slate-800 group hover:border-slate-700 transition-all">
-                          {editingObraName === obr ? (
+                      {obras.map((obrObj) => (
+                        <div key={obrObj.id} className="flex items-center justify-between p-3 bg-[#0F1115] rounded-lg border border-slate-800 group hover:border-slate-700 transition-all">
+                          {editingObraName === obrObj.nome ? (
                             <div className="flex items-center gap-2 w-full">
                               <input
                                 type="text"
-                                defaultValue={obr}
-                                id={`input-rename-obra-${obr}`}
+                                defaultValue={obrObj.nome}
+                                id={`input-rename-obra-${obrObj.id}`}
                                 className="bg-slate-900 border border-purple-500 text-xs text-white rounded px-2 py-1 w-full focus:outline-none"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
-                                    handleRenameObra(obr, (e.target as HTMLInputElement).value);
+                                    handleRenameObra(obrObj.nome, (e.target as HTMLInputElement).value);
                                   } else if (e.key === 'Escape') {
                                     setEditingObraName(null);
                                   }
@@ -2507,8 +2575,8 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const val = (document.getElementById(`input-rename-obra-${obr}`) as HTMLInputElement)?.value;
-                                  handleRenameObra(obr, val || '');
+                                  const val = (document.getElementById(`input-rename-obra-${obrObj.id}`) as HTMLInputElement)?.value;
+                                  handleRenameObra(obrObj.nome, val || '');
                                 }}
                                 className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold px-2"
                               >
@@ -2517,11 +2585,14 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                             </div>
                           ) : (
                             <>
-                              <span className="text-xs font-semibold text-white truncate max-w-[180px]">{obr}</span>
+                              <div className="flex flex-col truncate max-w-[180px]">
+                                <span className="text-xs font-semibold text-white truncate">{obrObj.nome}</span>
+                                <span className="text-[10px] text-slate-500 font-mono">ID: {obrObj.id}</span>
+                              </div>
                               <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-all">
                                 <button
                                   type="button"
-                                  onClick={() => setEditingObraName(obr)}
+                                  onClick={() => setEditingObraName(obrObj.nome)}
                                   className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-all"
                                   title="Renomear Empreendimento"
                                 >
@@ -2529,7 +2600,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteObra(obr)}
+                                  onClick={() => handleDeleteObra(obrObj.nome)}
                                   className="p-1 text-rose-450 hover:text-rose-400 rounded hover:bg-slate-800 transition-all"
                                   title="Remover Empreendimento"
                                 >
@@ -2546,25 +2617,36 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   {/* Add Obra Form */}
                   <div className="mt-6 pt-4 border-t border-slate-800">
                     <label className="text-[11px] text-slate-400 font-semibold block mb-2">Cadastrar Novo Empreendimento/Obra:</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Ex: Condomínio Bella Vue..."
-                        id="new-obra-input-value"
-                        className="bg-[#0F1115] border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none flex-1"
-                      />
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="text"
+                          placeholder="ID Obra (Ex: OB-201, PETR)"
+                          id="new-obra-id-input-field"
+                          className="bg-[#0F1115] border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none col-span-1 font-mono uppercase"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Nome da Obra..."
+                          id="new-obra-name-input-field"
+                          className="bg-[#0F1115] border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none col-span-2"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
-                          const val = (document.getElementById('new-obra-input-value') as HTMLInputElement)?.value || '';
-                          handleCreateObra(val);
-                          const inp = document.getElementById('new-obra-input-value') as HTMLInputElement;
-                          if (inp) inp.value = '';
+                          const idVal = (document.getElementById('new-obra-id-input-field') as HTMLInputElement)?.value || '';
+                          const nameVal = (document.getElementById('new-obra-name-input-field') as HTMLInputElement)?.value || '';
+                          handleCreateObra(nameVal, idVal);
+                          const inpId = document.getElementById('new-obra-id-input-field') as HTMLInputElement;
+                          const inpName = document.getElementById('new-obra-name-input-field') as HTMLInputElement;
+                          if (inpId) inpId.value = '';
+                          if (inpName) inpName.value = '';
                         }}
-                        className="bg-purple-650 hover:bg-purple-600 text-white rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1 shrink-0"
+                        className="w-full bg-purple-650 hover:bg-purple-600 text-white rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0"
                       >
                         <Plus size={14} />
-                        Adicionar
+                        Cadastrar Empreendimento com ID
                       </button>
                     </div>
                   </div>
@@ -3263,11 +3345,19 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <label className="text-xs text-slate-400 font-semibold block mb-1.5">Destinar para Obra:</label>
                 <select
                   value={editingPedido.obra}
-                  onChange={(e) => setEditingPedido({ ...editingPedido, obra: e.target.value })}
+                  onChange={(e) => {
+                    const selectedName = e.target.value;
+                    const matchedObra = obras.find(o => o.nome === selectedName);
+                    setEditingPedido({ 
+                      ...editingPedido, 
+                      obra: selectedName,
+                      obraId: matchedObra ? matchedObra.id : undefined
+                    });
+                  }}
                   className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-xs rounded-lg p-2.5 focus:border-purple-500 focus:outline-none"
                 >
                   {obras.map((o) => (
-                    <option key={o} value={o}>{o}</option>
+                    <option key={o.id} value={o.nome}>{(o.id && o.id !== 'undefined') ? `[${o.id}] ${o.nome}` : o.nome}</option>
                   ))}
                 </select>
               </div>
