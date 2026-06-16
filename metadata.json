@@ -1,0 +1,6 @@
+{
+  "name": "Gestão de Estoque",
+  "description": "Sistema sofisticado para controle de estoque e acompanhamento de pedidos de insumos por obra.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
