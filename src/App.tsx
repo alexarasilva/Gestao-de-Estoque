@@ -14,6 +14,8 @@ import {
   XCircle,
   FileDown,
   ChevronRight,
+  List,
+  LayoutGrid,
   Filter,
   User,
   MapPin,
@@ -285,6 +287,8 @@ export default function App() {
   const [qtdReceiveInput, setQtdReceiveInput] = useState<number>(0);
 
   // Sienge excel/spreadsheet import state
+  const [pedidosViewMode, setPedidosViewMode] = useState<'cards' | 'table'>('cards');
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [parsedImportItems, setParsedImportItems] = useState<Pedido[]>([]);
   const [importStats, setImportStats] = useState<{ newOrders: number; newItems: number; updatedQtds: number } | null>(null);
@@ -995,6 +999,15 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
     executeGuardedAction('excluir_pedido', `Excluir o Pedido ${id}`, () => {
       setPedidos(pedidos.filter(p => p.id !== id));
       triggerToast(`Pedido ${id} removido definitivamente com sucesso!`, "success");
+    });
+  };
+
+  const handleClearAllData = () => {
+    executeGuardedAction('admin', 'Limpar Banco de Dados (Zerar Pedidos e Baixas)', () => {
+      setPedidos([]);
+      setBaixas([]);
+      triggerToast('A Base de dados de pedidos e o histórico de baixas foram apagados! Pronto para importar Sienge!', 'success');
+      setShowClearConfirmModal(false);
     });
   };
 
@@ -1719,6 +1732,18 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                     <FileSpreadsheet size={16} className="text-emerald-450" />
                     Importar Sienge Sincronizado
                   </button>
+                  <button
+                    onClick={() => {
+                      executeGuardedAction('admin', 'Zerar Banco de Dados de Pedidos e Baixas', () => {
+                        setShowClearConfirmModal(true);
+                      });
+                    }}
+                    className="px-4 py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-550/25 rounded-md text-sm font-semibold transition-all flex items-center gap-2"
+                    title="Excluir todos os pedidos para carregar uma nova planilha limpa"
+                  >
+                    <Trash2 size={16} />
+                    Limpar Base (Zerar)
+                  </button>
                 </div>
               </div>
 
@@ -1761,126 +1786,273 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 </div>
 
-                <div className="flex bg-[#0F1115] p-1 rounded-md border border-slate-700 text-xs text-slate-400">
-                  {['Todos', 'Pendente', 'Parcial', 'Entregue'].map((st) => (
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto justify-end items-center">
+                  <div className="flex bg-[#0F1115] p-1 rounded-md border border-slate-700 text-xs text-slate-400">
+                    {['Todos', 'Pendente', 'Parcial', 'Entregue'].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setStatusFilter(st)}
+                        className={`px-2.5 py-1 rounded transition-colors ${
+                          statusFilter === st ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex bg-[#0F1115] p-1 rounded-md border border-slate-700 text-xs text-slate-400">
                     <button
-                      key={st}
-                      onClick={() => setStatusFilter(st)}
-                      className={`px-2.5 py-1 rounded transition-colors ${
-                        statusFilter === st ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
+                      type="button"
+                      onClick={() => setPedidosViewMode('cards')}
+                      className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1.5 ${
+                        pedidosViewMode === 'cards' ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
                       }`}
+                      title="Visualização em Colunas"
                     >
-                      {st}
+                      <LayoutGrid size={13} />
+                      <span className="text-[11px] font-medium">Colunas</span>
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => setPedidosViewMode('table')}
+                      className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1.5 ${
+                        pedidosViewMode === 'table' ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
+                      }`}
+                      title="Visualização em Lista / Linhas"
+                    >
+                      <List size={13} />
+                      <span className="text-[11px] font-medium">Listado</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Advanced Orders List Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredPedidos.length === 0 ? (
-                  <div className="col-span-full text-center py-12 bg-[#161920] border border-slate-800 rounded-xl text-slate-500">
-                    <Layers size={36} className="mx-auto text-slate-700 mb-2.5" />
-                    Nenhum pedido atende aos filtros definidos nesta aba.
-                  </div>
-                ) : (
-                  filteredPedidos.map((p) => {
-                    const progressVal = Math.round((p.qtdRecebida / p.qtdSolicitada) * 100);
-                    return (
-                      <div key={p.id} className="bg-[#161920] border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between">
-                        
-                        <div>
-                          <div className="flex justify-between items-start mb-3">
-                            <span className="text-xs font-semibold text-slate-400 font-mono flex flex-wrap gap-1.5 items-center">
-                              <span className="text-slate-500">{p.id}</span>
-                              <span className="text-slate-600">•</span>
-                              <span className="bg-[#1D2028] text-yellow-500/90 text-[10px] px-1.5 py-0.5 rounded font-bold border border-yellow-500/10">
-                                {p.codigo || '-'}
+              {/* Advanced Orders List - Dual view (Cards or Table listado) */}
+              {pedidosViewMode === 'table' ? (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl bg-[#161920]">
+                  <table className="w-full text-left text-xs text-slate-300 border-collapse">
+                    <thead className="bg-[#1C2028] text-slate-400 text-[11px] uppercase font-mono tracking-wider border-b border-slate-800">
+                      <tr>
+                        <th className="px-4 py-3">ID Pedido / Código</th>
+                        <th className="px-4 py-3">Insumo / Material</th>
+                        <th className="px-4 py-3">Obra Destino</th>
+                        <th className="px-4 py-3">Data</th>
+                        <th className="px-4 py-3 text-right">Qtd. Solicitada / Recebida</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="px-4 py-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-[#161920]">
+                      {filteredPedidos.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-12 text-slate-500">
+                            <Layers size={36} className="mx-auto text-slate-700 mb-2.5" />
+                            Nenhum pedido atende aos filtros definidos nesta aba.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredPedidos.map((p) => {
+                          const progressVal = Math.round((p.qtdRecebida / p.qtdSolicitada) * 100);
+                          return (
+                            <tr key={`${p.id}-${p.codigo}`} className="hover:bg-slate-800/20 transition-all">
+                              <td className="px-4 py-3.5 font-mono text-[11px]">
+                                <div className="text-slate-300 font-bold">{p.id}</div>
+                                <div className="text-yellow-500/90 text-[10px] mt-0.5">{p.codigo || '-'}</div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className="font-semibold text-white text-sm">{p.insumo}</span>
+                                <span className="block text-[10px] text-slate-500 mt-0.5">Unidade: {p.unidade}</span>
+                              </td>
+                              <td className="px-4 py-3.5 text-slate-400 font-medium">
+                                <span className="flex items-center gap-1">
+                                  <MapPin size={11} className="text-slate-500 inline" />
+                                  {p.obra}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-slate-400 font-mono text-[11px]">{p.dataPedido}</td>
+                              <td className="px-4 py-3.5 text-right font-semibold">
+                                <div>
+                                  <span className="text-slate-300">{p.qtdSolicitada}</span>
+                                  <span className="text-slate-500 mx-1">/</span>
+                                  <span className="text-emerald-400">{p.qtdRecebida}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-1 font-mono">
+                                  Falta: <span className="text-slate-300 font-bold">{p.qtdSolicitada - p.qtdRecebida} {p.unidade}</span>
+                                </div>
+                                <div className="w-20 bg-slate-900 rounded-full h-1 overflow-hidden ml-auto mt-1.5">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      p.status === 'Entregue' ? 'bg-emerald-500' :
+                                      p.status === 'Parcial' ? 'bg-blue-400' :
+                                      p.status === 'Cancelado' ? 'bg-rose-500' : 'bg-amber-500'
+                                    }`}
+                                    style={{ width: `${Math.min(progressVal, 100)}%` }}
+                                  ></div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className={`px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-extrabold inline-block ${
+                                  p.status === 'Entregue' ? 'bg-emerald-500/15 text-emerald-400' :
+                                  p.status === 'Parcial' ? 'bg-blue-500/15 text-blue-400' :
+                                  p.status === 'Cancelado' ? 'bg-rose-500/15 text-rose-400' : 'bg-amber-500/15 text-amber-500'
+                                }`}>
+                                  {p.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <div className="flex gap-2 items-center justify-end">
+                                  {p.status !== 'Entregue' && p.status !== 'Cancelado' && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setPedidos(pedidos.map(item => item.id === p.id && item.codigo === p.codigo ? { ...item, status: 'Cancelado' as const } : item));
+                                          triggerToast(`Pedido ${p.id} cancelado com sucesso.`, 'info');
+                                        }}
+                                        className="px-2 py-1 text-rose-500 hover:text-white hover:bg-rose-955/45 rounded transition-all text-[11px] font-semibold"
+                                        title="Cancelar Pedido"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        onClick={() => openReceiveModal(p.id, p.codigo || '')}
+                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold transition-colors"
+                                      >
+                                        Dar Entrada
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* Administrative actions */}
+                                  <button
+                                    onClick={() => handleOpenEditPedidoModal(p)}
+                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all"
+                                    title="Editar Especificações"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePedido(p.id)}
+                                    className="p-1 text-rose-550/70 hover:text-rose-400 hover:bg-slate-800 rounded transition-all"
+                                    title="Excluir Definitivamente"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredPedidos.length === 0 ? (
+                    <div className="col-span-full text-center py-12 bg-[#161920] border border-slate-800 rounded-xl text-slate-500">
+                      <Layers size={36} className="mx-auto text-slate-700 mb-2.5" />
+                      Nenhum pedido atende aos filtros definidos nesta aba.
+                    </div>
+                  ) : (
+                    filteredPedidos.map((p) => {
+                      const progressVal = Math.round((p.qtdRecebida / p.qtdSolicitada) * 100);
+                      return (
+                        <div key={`${p.id}-${p.codigo}`} className="bg-[#161920] border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between">
+                          
+                          <div>
+                            <div className="flex justify-between items-start mb-3">
+                              <span className="text-xs font-semibold text-slate-400 font-mono flex flex-wrap gap-1.5 items-center">
+                                <span className="text-slate-500">{p.id}</span>
+                                <span className="text-slate-600">•</span>
+                                <span className="bg-[#1D2028] text-yellow-500/90 text-[10px] px-1.5 py-0.5 rounded font-bold border border-yellow-500/10">
+                                  {p.codigo || '-'}
+                                </span>
+                                <span className="text-slate-600">•</span>
+                                <span className="text-slate-500">{p.dataPedido}</span>
                               </span>
-                              <span className="text-slate-600">•</span>
-                              <span className="text-slate-500">{p.dataPedido}</span>
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-extrabold ${
-                              p.status === 'Entregue' ? 'bg-emerald-500/15 text-emerald-400' :
-                              p.status === 'Parcial' ? 'bg-blue-500/15 text-blue-400' :
-                              p.status === 'Cancelado' ? 'bg-rose-500/15 text-rose-400' : 'bg-amber-500/15 text-amber-500'
-                            }`}>
-                              {p.status}
-                            </span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-extrabold ${
+                                p.status === 'Entregue' ? 'bg-emerald-500/15 text-emerald-400' :
+                                p.status === 'Parcial' ? 'bg-blue-500/15 text-blue-400' :
+                                p.status === 'Cancelado' ? 'bg-rose-500/15 text-rose-400' : 'bg-amber-500/15 text-amber-500'
+                              }`}>
+                                {p.status}
+                              </span>
+                            </div>
+
+                            <h4 className="text-base font-semibold text-white mb-1">{p.insumo}</h4>
+                            <p className="text-xs text-slate-400 flex items-center gap-1 mb-4">
+                              <MapPin size={12} className="text-slate-500" />
+                              {p.obra}
+                            </p>
                           </div>
 
-                          <h4 className="text-base font-semibold text-white mb-1">{p.insumo}</h4>
-                          <p className="text-xs text-slate-400 flex items-center gap-1 mb-4">
-                            <MapPin size={12} className="text-slate-500" />
-                            {p.obra}
-                          </p>
-                        </div>
+                          {/* Order Progress Details */}
+                          <div className="space-y-3 mt-auto">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-slate-500">Quantidade Solicitada / Recebida:</span>
+                              <span className="text-slate-300 font-semibold">{p.qtdSolicitada} {p.unidade} / <span className="text-emerald-400">{p.qtdRecebida} {p.unidade}</span></span>
+                            </div>
 
-                        {/* Order Progress Details */}
-                        <div className="space-y-3 mt-auto">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">Quantidade Solicitada / Recebida:</span>
-                            <span className="text-slate-300 font-semibold">{p.qtdSolicitada} {p.unidade} / <span className="text-emerald-400">{p.qtdRecebida} {p.unidade}</span></span>
-                          </div>
+                            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden shadow-inner">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  p.status === 'Entregue' ? 'bg-emerald-500' :
+                                  p.status === 'Parcial' ? 'bg-blue-400' :
+                                  p.status === 'Cancelado' ? 'bg-rose-500' : 'bg-amber-500'
+                                }`}
+                                style={{ width: `${progressVal}%` }}
+                              ></div>
+                            </div>
 
-                          <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden shadow-inner">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                p.status === 'Entregue' ? 'bg-emerald-500' :
-                                p.status === 'Parcial' ? 'bg-blue-400' :
-                                p.status === 'Cancelado' ? 'bg-rose-500' : 'bg-amber-500'
-                              }`}
-                              style={{ width: `${progressVal}%` }}
-                            ></div>
-                          </div>
+                            <div className="flex items-center justify-between text-xs pt-2">
+                              <div className="text-slate-400 font-mono text-[11px]">Falta: <span className="text-slate-300 font-bold">{p.qtdSolicitada - p.qtdRecebida} {p.unidade}</span></div>
+                              <div className="flex gap-2 items-center">
+                                {p.status !== 'Entregue' && p.status !== 'Cancelado' && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setPedidos(pedidos.map(item => item.id === p.id && item.codigo === p.codigo ? { ...item, status: 'Cancelado' as const } : item));
+                                        triggerToast(`Pedido ${p.id} cancelado com sucesso.`, 'info');
+                                      }}
+                                      className="px-2.5 py-1 text-rose-500 hover:text-white hover:bg-rose-950/40 rounded transition-all text-xs font-semibold"
+                                    >
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      onClick={() => openReceiveModal(p.id, p.codigo || '')}
+                                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold transition-colors"
+                                    >
+                                      Dar Entrada
+                                    </button>
+                                  </>
+                                )}
 
-                          <div className="flex items-center justify-between text-xs pt-2">
-                            <div className="text-slate-400 font-mono text-[11px]">Falta: <span className="text-slate-300 font-bold">{p.qtdSolicitada - p.qtdRecebida} {p.unidade}</span></div>
-                            <div className="flex gap-2 items-center">
-                              {p.status !== 'Entregue' && p.status !== 'Cancelado' && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      setPedidos(pedidos.map(item => item.id === p.id ? { ...item, status: 'Cancelado' as const } : item));
-                                      triggerToast(`Pedido ${p.id} cancelado com sucesso.`, 'info');
-                                    }}
-                                    className="px-2.5 py-1 text-rose-500 hover:text-white hover:bg-rose-950/40 rounded transition-all text-xs font-semibold"
-                                  >
-                                    Cancelar
-                                  </button>
-                                  <button
-                                    onClick={() => openReceiveModal(p.id, p.codigo || '')}
-                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold transition-colors"
-                                  >
-                                    Dar Entrada
-                                  </button>
-                                </>
-                              )}
-
-                              {/* Administrative actions */}
-                              <button
-                                onClick={() => handleOpenEditPedidoModal(p)}
-                                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all"
-                                title="Editar Especificações"
-                              >
-                                <Edit size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeletePedido(p.id)}
-                                className="p-1.5 text-rose-500/70 hover:text-rose-400 hover:bg-slate-800 rounded transition-all"
-                                title="Excluir Definitivamente"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                                {/* Administrative actions */}
+                                <button
+                                  onClick={() => handleOpenEditPedidoModal(p)}
+                                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all"
+                                  title="Editar Especificações"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePedido(p.id)}
+                                  className="p-1.5 text-rose-500/70 hover:text-rose-400 hover:bg-slate-800 rounded transition-all"
+                                  title="Excluir Definitivamente"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -3273,6 +3445,56 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-semibold transition-all shadow-md"
                 >
                   Salvar Cadastro
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMAÇÃO DE APAGAMENTO TOTAL (ZERAR BANCO DE DADOS) */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#161920] border border-red-955/30 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-rose-500 animate-pulse" />
+                <h3 className="text-base font-serif font-semibold text-white">Confirmar Apagamento Geral</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowClearConfirmModal(false)}
+                className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-lg">
+                <p className="text-xs text-rose-300 font-medium leading-relaxed">
+                  Atenção: Esta ação é irreversível e apagará todos os dados de <strong>Pedidos de Compra</strong> e o histórico de <strong>Baixas de Estoque</strong> salvos localmente.
+                </p>
+                <p className="text-[11px] text-slate-400 mt-2">
+                  Use esta operação para limpar as informações fictícias de teste e importar a planilha de dados da sua própria empresa.
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirmModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-xs font-semibold transition-all"
+                >
+                  Cancelar, manter dados
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAllData}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-semibold transition-all flex items-center gap-1.5 shadow-lg shadow-rose-900/20"
+                >
+                  <Trash2 size={14} />
+                  Sim, apagar tudo e zerar
                 </button>
               </div>
             </div>
