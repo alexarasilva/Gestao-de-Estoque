@@ -95,6 +95,49 @@ export interface Pedido {
   unidade: string;
   status: 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado';
   dataPedido: string;
+  dataChegada?: string;
+  
+  // Sienge excel fields
+  codComprador?: string;
+  fornecedor?: string;
+  codDetalhe?: string;
+  descricaoDetalhe?: string;
+  marca?: string;
+  descricaoUnidade?: string;
+  qtdPendenteImportada?: number;
+}
+
+export function calculateDaysElapsed(dataPedidoStr: string, statusText: string, dataChegadaStr?: string): number {
+  if (!dataPedidoStr) return 0;
+  
+  const parseDate = (str: string): Date | null => {
+    const parts = str.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // 0-indexed
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const start = parseDate(dataPedidoStr);
+  if (!start) return 1;
+
+  let end: Date;
+  if (statusText === 'Entregue') {
+    end = (dataChegadaStr ? parseDate(dataChegadaStr) : null) || new Date();
+  } else {
+    end = new Date(); // Currently in progress
+  }
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const diffTime = Math.max(0, end.getTime() - start.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays === 0 ? 1 : diffDays;
 }
 
 export interface Baixa {
@@ -366,24 +409,68 @@ export default function App() {
   // Calculate Net Available Stock for each (Insumo + Obra)
   // Formula: Available = Sum(qtdRecebida from Pedidos with same insumo & obra) - Sum(quantidade from Baixas with same insumo & obra)
   const stockInventory = useMemo(() => {
-    const map: { [key: string]: { insumo: string; codigo: string; obra: string; recebido: number; baixado: number; saldo: number; unidade: string } } = {};
+    const map: { 
+      [key: string]: { 
+        insumo: string; 
+        codigo: string; 
+        obra: string; 
+        recebido: number; 
+        baixado: number; 
+        saldo: number; 
+        unidade: string;
+        obraId?: string;
+        fornecedor?: string;
+        marca?: string;
+        descricaoDetalhe?: string;
+        descricaoUnidade?: string;
+      } 
+    } = {};
 
     // 1. Gather all received amounts
     pedidos.forEach((p) => {
       if (p.status === 'Cancelado') return;
       const key = `${p.obra}:::${p.codigo || ''}:::${p.insumo}`;
       if (!map[key]) {
-        map[key] = { insumo: p.insumo, codigo: p.codigo || '', obra: p.obra, recebido: 0, baixado: 0, saldo: 0, unidade: p.unidade };
+        map[key] = { 
+          insumo: p.insumo, 
+          codigo: p.codigo || '', 
+          obra: p.obra, 
+          recebido: 0, 
+          baixado: 0, 
+          saldo: 0, 
+          unidade: p.unidade,
+          obraId: p.obraId,
+          fornecedor: p.fornecedor,
+          marca: p.marca,
+          descricaoDetalhe: p.descricaoDetalhe,
+          descricaoUnidade: p.descricaoUnidade
+        };
       }
       map[key].recebido += p.qtdRecebida;
       map[key].saldo += p.qtdRecebida;
+      
+      // Keep last imported / updated data
+      if (p.fornecedor) map[key].fornecedor = p.fornecedor;
+      if (p.marca) map[key].marca = p.marca;
+      if (p.descricaoDetalhe) map[key].descricaoDetalhe = p.descricaoDetalhe;
+      if (p.descricaoUnidade) map[key].descricaoUnidade = p.descricaoUnidade;
+      if (p.obraId) map[key].obraId = p.obraId;
     });
 
     // 2. Subtract all withdrawn amounts
     baixas.forEach((b) => {
       const key = `${b.obra}:::${b.codigo || ''}:::${b.insumo}`;
       if (!map[key]) {
-        map[key] = { insumo: b.insumo, codigo: b.codigo || '', obra: b.obra, recebido: 0, baixado: 0, saldo: 0, unidade: b.unidade };
+        map[key] = { 
+          insumo: b.insumo, 
+          codigo: b.codigo || '', 
+          obra: b.obra, 
+          recebido: 0, 
+          baixado: 0, 
+          saldo: 0, 
+          unidade: b.unidade,
+          obraId: b.obraId
+        };
       }
       map[key].baixado += b.quantidade;
       map[key].saldo -= b.quantidade;
@@ -396,11 +483,20 @@ export default function App() {
   const filteredPedidos = useMemo(() => {
     return pedidos.filter((p) => {
       const matchObra = selectedObra === 'Todas as Obras' || p.obra === selectedObra;
+      
+      const q = searchQuery.toLowerCase().trim();
       const matchSearch =
-        p.insumo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.codigo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.obra.toLowerCase().includes(searchQuery.toLowerCase());
+        p.insumo.toLowerCase().includes(q) ||
+        (p.codigo || '').toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        p.obra.toLowerCase().includes(q) ||
+        (p.obraId || '').toLowerCase().includes(q) ||
+        (p.fornecedor || '').toLowerCase().includes(q) ||
+        (p.codComprador || '').toLowerCase().includes(q) ||
+        (p.codDetalhe || '').toLowerCase().includes(q) ||
+        (p.descricaoDetalhe || '').toLowerCase().includes(q) ||
+        (p.marca || '').toLowerCase().includes(q);
+        
       const matchStatus = statusFilter === 'Todos' || p.status === statusFilter;
       return matchObra && matchSearch && matchStatus;
     });
@@ -409,10 +505,16 @@ export default function App() {
   const filteredStock = useMemo(() => {
     return stockInventory.filter((item) => {
       const matchObra = selectedObra === 'Todas as Obras' || item.obra === selectedObra;
+      
+      const q = searchQuery.toLowerCase().trim();
       const matchSearch =
-        item.insumo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.codigo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.obra.toLowerCase().includes(searchQuery.toLowerCase());
+        item.insumo.toLowerCase().includes(q) ||
+        (item.codigo || '').toLowerCase().includes(q) ||
+        item.obra.toLowerCase().includes(q) ||
+        (item.fornecedor || '').toLowerCase().includes(q) ||
+        (item.marca || '').toLowerCase().includes(q) ||
+        (item.descricaoDetalhe || '').toLowerCase().includes(q);
+        
       return matchObra && matchSearch;
     });
   }, [stockInventory, selectedObra, searchQuery]);
@@ -623,13 +725,16 @@ export default function App() {
         if (p.id === selectedPedidoId && p.codigo === selectedPedidoCodigo) {
           const newRec = Number(p.qtdRecebida) + Number(qtdReceiveInput);
           let newStatus: 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado' = 'Parcial';
+          let dataCheg = p.dataChegada;
           if (newRec >= p.qtdSolicitada) {
             newStatus = 'Entregue';
+            dataCheg = new Date().toLocaleDateString('pt-BR'); // Record arrival date today!
           }
           return {
             ...p,
             qtdRecebida: Math.min(newRec, p.qtdSolicitada), // clamp to target
-            status: newStatus
+            status: newStatus,
+            dataChegada: dataCheg
           };
         }
         return p;
@@ -650,6 +755,24 @@ export default function App() {
     let updatedList = [...pedidos];
     const existingOrderIds = new Set(pedidos.map(p => p.id));
     
+    // Register any new construction sites referenced in the spreadsheet
+    const uniqueObrasInImport = Array.from(new Set(importedItems.map(r => r.obra)));
+    const finalObrasList = [...obras];
+    const activeObrasNames = obras.map(o => o.nome.toLowerCase().trim());
+    const newObrasToRegister = uniqueObrasInImport.filter(o => o && !activeObrasNames.includes(o.toLowerCase().trim()));
+    if (newObrasToRegister.length > 0) {
+      const startId = obras.length + 101;
+      newObrasToRegister.forEach((name, idx) => {
+        // Look up corresponding spreadsheet codObra (obraId) if available
+        const matchedItem = importedItems.find(item => item.obra && item.obra.toLowerCase().trim() === name.toLowerCase().trim());
+        finalObrasList.push({
+          id: matchedItem?.obraId || `OB-${startId + idx}`,
+          nome: name
+        });
+      });
+      setObras(finalObrasList);
+    }
+    
     importedItems.forEach((newItem) => {
       // Find matching item in current orders list: same order ID and same insumo (or code)
       const exactMatchIndex = updatedList.findIndex(
@@ -658,31 +781,47 @@ export default function App() {
                 p.insumo.toLowerCase().trim() === newItem.insumo.toLowerCase().trim())
       );
       
+      const matchedObra = finalObrasList.find(o => o.nome.toLowerCase().trim() === newItem.obra.toLowerCase().trim());
+      const resolvedObraId = matchedObra ? matchedObra.id : newItem.obraId;
+      
       if (exactMatchIndex !== -1) {
         // Exists: update details if changed
         const existingItem = updatedList[exactMatchIndex];
         const newQtdSolicitada = newItem.qtdSolicitada;
         const currentQtdRecebida = existingItem.qtdRecebida;
         
-        let newStatus = existingItem.status;
+        // If the spreadsheet provides status entrega, use it responsibly
+        let newStatus = newItem.status !== 'Pendente' ? newItem.status : existingItem.status;
         if (newStatus !== 'Cancelado') {
           if (currentQtdRecebida >= newQtdSolicitada) {
             newStatus = 'Entregue';
           } else if (currentQtdRecebida > 0) {
             newStatus = 'Parcial';
-          } else {
-            newStatus = 'Pendente';
+          } else if (newStatus === 'Entregue' && currentQtdRecebida < newQtdSolicitada) {
+            newStatus = 'Parcial';
           }
         }
         
         updatedList[exactMatchIndex] = {
           ...existingItem,
           obra: newItem.obra || existingItem.obra,
+          obraId: resolvedObraId,
           unidade: newItem.unidade || existingItem.unidade,
           qtdSolicitada: newQtdSolicitada,
           status: newStatus,
           codigo: newItem.codigo || existingItem.codigo,
           insumo: newItem.insumo || existingItem.insumo,
+          
+          // New Sienge advanced fields mapping - keep last imported supplier
+          codComprador: newItem.codComprador || existingItem.codComprador,
+          fornecedor: newItem.fornecedor || existingItem.fornecedor, // "considerar sempre o ultimo"
+          codDetalhe: newItem.codDetalhe || existingItem.codDetalhe,
+          descricaoDetalhe: newItem.descricaoDetalhe || existingItem.descricaoDetalhe,
+          marca: newItem.marca || existingItem.marca,
+          descricaoUnidade: newItem.descricaoUnidade || existingItem.descricaoUnidade,
+          qtdPendenteImportada: newItem.qtdPendenteImportada !== undefined ? newItem.qtdPendenteImportada : existingItem.qtdPendenteImportada,
+          dataPedido: newItem.dataPedido || existingItem.dataPedido,
+          dataChegada: newStatus === 'Entregue' ? (existingItem.dataChegada || newItem.dataChegada || new Date().toLocaleDateString('pt-BR')) : undefined
         };
         updatedQuantitiesCount++;
       } else {
@@ -696,26 +835,13 @@ export default function App() {
         
         updatedList.push({
           ...newItem,
-          qtdRecebida: 0,
-          status: 'Pendente'
+          obraId: resolvedObraId,
+          qtdRecebida: newItem.qtdRecebida || 0,
+          status: newItem.status || 'Pendente',
+          dataChegada: newItem.status === 'Entregue' ? (newItem.dataChegada || new Date().toLocaleDateString('pt-BR')) : undefined
         });
       }
     });
-    
-    // Register any new construction sites referenced in the spreadsheet
-    const uniqueObrasInImport = Array.from(new Set(importedItems.map(r => r.obra)));
-    const finalObrasList = [...obras];
-    const activeObrasNames = obras.map(o => o.nome.toLowerCase().trim());
-    const newObrasToRegister = uniqueObrasInImport.filter(o => o && !activeObrasNames.includes(o.toLowerCase().trim()));
-    if (newObrasToRegister.length > 0) {
-      const startId = obras.length + 101;
-      const formattedNewObras = newObrasToRegister.map((name, idx) => ({
-        id: `OB-${startId + idx}`,
-        nome: name
-      }));
-      finalObrasList.push(...formattedNewObras);
-      setObras(finalObrasList);
-    }
 
     // Map all final items to their resolved or newly built obraId
     const finalMappedList = updatedList.map(item => {
@@ -757,19 +883,95 @@ export default function App() {
     
     const headers = sheetData[headerRowIndex].map(h => String(h || '').trim());
     
-    let colId = -1, colInsumo = -1, colCodigo = -1, colObra = -1, colQtd = -1, colUnidade = -1, colData = -1;
+    let colId = -1;
+    let colInsumo = -1;
+    let colCodigo = -1;
+    let colObra = -1;
+    let colCodObra = -1;
+    let colQtd = -1;
+    let colUnidade = -1;
+    let colData = -1;
+    
+    // New Sienge columns
+    let colCodComprador = -1;
+    let colFornecedor = -1;
+    let colCodDetalhe = -1;
+    let colDescDetalhe = -1;
+    let colMarca = -1;
+    let colDescUnidade = -1;
+    let colStatusEntrega = -1;
+    let colQtdPendente = -1;
     
     headers.forEach((h, idx) => {
-      const s = h.toLowerCase();
-      if (s.includes('pedido') || s.includes('número') || s.includes('numero') || s === 'id' || s === 'pc') colId = idx;
-      else if (s.includes('insumo') || s.includes('descri') || s.includes('nome') || s.includes('item') || s.includes('material')) colInsumo = idx;
-      else if (s.includes('código') || s.includes('codigo') || s === 'cod' || s === 'cód') colCodigo = idx;
-      else if (s.includes('obra') || s.includes('local') || s.includes('filial') || s.includes('empreendimento')) colObra = idx;
-      else if (s.includes('solicitada') || s.includes('quantidade') || s.includes('qtd') || s.includes('volume') || s.includes('comprada')) colQtd = idx;
-      else if (s.includes('unidade') || s === 'un' || s === 'um' || s === 'medida' || s === 'unid') colUnidade = idx;
-      else if (s.includes('data') || s.includes('emissão') || s.includes('emissao') || s.includes('compra')) colData = idx;
+      const s = h.toLowerCase().trim();
+      
+      // 1. Nº Pedido
+      if (s === 'nº pedido' || s === 'npedido' || s === 'numero pedido' || s === 'número pedido' || s.includes('nº ped') || s.includes('num_ped') || s === 'pedido' || s === 'id' || s === 'pc') {
+        colId = idx;
+      }
+      // 2. Data pedido
+      else if (s === 'data pedido' || s === 'data do pedido' || s === 'data emissao' || s === 'data emissão' || s.includes('data') || s.includes('emissão')) {
+        colData = idx;
+      }
+      // 3. Cód. Obra
+      else if (s === 'cód. obra' || s === 'cod. obra' || s === 'codigo obra' || s === 'código obra' || (s.includes('obra') && (s.includes('cod') || s.includes('cód')))) {
+        colCodObra = idx;
+      }
+      // 4. Obra
+      else if (s === 'obra' || s === 'nome obra' || s.includes('empreendimento') || s.includes('filial') || s.includes('local')) {
+        colObra = idx;
+      }
+      // 5. Cód. Comprador
+      else if (s === 'cód. comprador' || s === 'cod. comprador' || s === 'codigo comprador' || s === 'cod comprador' || s.includes('comprador')) {
+        colCodComprador = idx;
+      }
+      // 6. Fornecedor
+      else if (s === 'fornecedor' || s === 'forn' || s === 'parceiro' || s.includes('fornecedor')) {
+        colFornecedor = idx;
+      }
+      // 7. Cód. Insumo
+      else if (s === 'cód. insumo' || s === 'cod. insumo' || s === 'codigo insumo' || s === 'código insumo' || s === 'cod_insumo' || s === 'cód insumo' || s === 'insumo código') {
+        colCodigo = idx;
+      }
+      // 8. Descrição insumo
+      else if (s === 'descrição insumo' || s === 'descricao insumo' || s === 'desc insumo' || s === 'insumo' || s === 'material' || s === 'item' || s === 'produto' || (s.includes('desc') && s.includes('insumo'))) {
+        colInsumo = idx;
+      }
+      // 9. Cód. Detalhe
+      else if (s === 'cód. detalhe' || s === 'cod. detalhe' || s === 'codigo detalhe' || s === 'cod detalhe' || (s.includes('detalhe') && s.includes('cod'))) {
+        colCodDetalhe = idx;
+      }
+      // 10. Descrição detalhe
+      else if (s === 'descrição detalhe' || s === 'descricao detalhe' || s === 'desc detalhe' || s === 'detalhe' || (s.includes('desc') && s.includes('detalhe'))) {
+        colDescDetalhe = idx;
+      }
+      // 11. Descrição marca
+      else if (s === 'descrição marca' || s === 'descricao marca' || s === 'desc marca' || s === 'marca' || s.includes('marca')) {
+        colMarca = idx;
+      }
+      // 12. Símbolo unidade medida
+      else if (s === 'símbolo unidade medida' || s === 'simbolo unidade medida' || s === 'simbolo unidade' || s === 'simb unidade' || s === 'unid' || s === 'un' || s === 'unidade' || s === 'um') {
+        colUnidade = idx;
+      }
+      // 13. Descrição unidade medida
+      else if (s === 'descrição unidade medida' || s === 'descricao unidade medida' || (s.includes('desc') && s.includes('unidade'))) {
+        colDescUnidade = idx;
+      }
+      // 14. Status entrega
+      else if (s === 'status entrega' || s === 'status_entrega' || s === 'status do pedido' || s === 'status' || (s.includes('status') && s.includes('entrega'))) {
+        colStatusEntrega = idx;
+      }
+      // 15. Quant. pendente
+      else if (s === 'quant. pendente' || s === 'quantidade pendente' || s === 'qtd pendente' || s === 'saldo pendente' || s === 'pendente' || s.includes('pendente')) {
+        colQtdPendente = idx;
+      }
+      // Quantidade comprada / solicitada fallback
+      else if (s === 'quant. solicitada' || s === 'quantidade solicitada' || s === 'qtd solicitada' || s === 'quantidade comprada' || s === 'qtd comprada' || s === 'quantidade' || s === 'qtd' || s === 'volume') {
+        colQtd = idx;
+      }
     });
     
+    // Safety automatic index fallbacks
     if (colId === -1) colId = headers.findIndex(h => /id|num/i.test(h)) !== -1 ? headers.findIndex(h => /id|num/i.test(h)) : 0;
     if (colInsumo === -1) colInsumo = headers.findIndex(h => /ins|des|nom|itm/i.test(h)) !== -1 ? headers.findIndex(h => /ins|des|nom|itm/i.test(h)) : 1;
     if (colCodigo === -1) colCodigo = headers.findIndex(h => /cod/i.test(h)) !== -1 ? headers.findIndex(h => /cod/i.test(h)) : 2;
@@ -781,6 +983,7 @@ export default function App() {
     const results: Pedido[] = [];
     let lastOrderId = '';
     let lastObra = listObras[0] || 'Residencial Alvorada';
+    let lastObraId = '';
     let lastData = new Date().toLocaleDateString('pt-BR');
     
     for (let r = headerRowIndex + 1; r < sheetData.length; r++) {
@@ -791,18 +994,31 @@ export default function App() {
       let rawInsumo = colInsumo !== -1 && row[colInsumo] !== undefined ? String(row[colInsumo]).trim() : '';
       let rawCodigo = colCodigo !== -1 && row[colCodigo] !== undefined ? String(row[colCodigo]).trim() : '';
       let rawObra = colObra !== -1 && row[colObra] !== undefined ? String(row[colObra]).trim() : '';
+      let rawCodObra = colCodObra !== -1 && row[colCodObra] !== undefined ? String(row[colCodObra]).trim() : '';
       let rawQtd = colQtd !== -1 && row[colQtd] !== undefined ? parseFloat(String(row[colQtd]).replace(/[^\d.-]/g, '')) : 0;
       let rawUnidade = colUnidade !== -1 && row[colUnidade] !== undefined ? String(row[colUnidade]).trim() : 'un';
       let rawData = colData !== -1 && row[colData] !== undefined ? String(row[colData]).trim() : '';
+      
+      // New fields parsing
+      let rawCodComprador = colCodComprador !== -1 && row[colCodComprador] !== undefined ? String(row[colCodComprador]).trim() : '';
+      let rawFornecedor = colFornecedor !== -1 && row[colFornecedor] !== undefined ? String(row[colFornecedor]).trim() : '';
+      let rawCodDetalhe = colCodDetalhe !== -1 && row[colCodDetalhe] !== undefined ? String(row[colCodDetalhe]).trim() : '';
+      let rawDescDetalhe = colDescDetalhe !== -1 && row[colDescDetalhe] !== undefined ? String(row[colDescDetalhe]).trim() : '';
+      let rawMarca = colMarca !== -1 && row[colMarca] !== undefined ? String(row[colMarca]).trim() : '';
+      let rawDescUnidade = colDescUnidade !== -1 && row[colDescUnidade] !== undefined ? String(row[colDescUnidade]).trim() : '';
+      let rawStatusEntrega = colStatusEntrega !== -1 && row[colStatusEntrega] !== undefined ? String(row[colStatusEntrega]).trim() : '';
+      let rawQtdPendente = colQtdPendente !== -1 && row[colQtdPendente] !== undefined ? parseFloat(String(row[colQtdPendente]).replace(/[^\d.-]/g, '')) : undefined;
       
       if (!rawInsumo || rawInsumo.toLowerCase() === 'insumo' || rawInsumo.toLowerCase() === 'descrição') continue;
       
       if (rawId) lastOrderId = rawId;
       if (rawObra) lastObra = rawObra;
+      if (rawCodObra) lastObraId = rawCodObra;
       if (rawData) lastData = rawData;
       
       const finalId = lastOrderId || 'PC-IMPORTADO';
       const finalObra = lastObra || 'Todas as Obras';
+      const finalObraId = rawCodObra || lastObraId || undefined;
       const finalData = lastData || new Date().toLocaleDateString('pt-BR');
       
       let finalCodigo = rawCodigo;
@@ -811,18 +1027,55 @@ export default function App() {
         finalCodigo = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
       }
       
+      let statusMapped: 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado' = 'Pendente';
+      if (rawStatusEntrega) {
+        const lowerStatus = rawStatusEntrega.toLowerCase();
+        if (lowerStatus.includes('entregue') || lowerStatus.includes('concluido') || lowerStatus.includes('concluído') || lowerStatus.includes('chegou') || lowerStatus.includes('recebido') || lowerStatus === 'e') {
+          statusMapped = 'Entregue';
+        } else if (lowerStatus.includes('parcial') || lowerStatus === 'p') {
+          statusMapped = 'Parcial';
+        } else if (lowerStatus.includes('cancelado') || lowerStatus === 'c') {
+          statusMapped = 'Cancelado';
+        }
+      } else if (rawQtdPendente !== undefined && rawQtd > 0) {
+        if (rawQtdPendente <= 0) {
+          statusMapped = 'Entregue';
+        } else if (rawQtdPendente < rawQtd) {
+          statusMapped = 'Parcial';
+        }
+      }
+      
+      // Calculate parsed quantity request
+      let computedQtdSolicitada = isNaN(rawQtd) || rawQtd <= 0 ? 1 : rawQtd;
+      let computedQtdRecebida = 0;
+      if (statusMapped === 'Entregue') {
+        computedQtdRecebida = computedQtdSolicitada;
+      } else if (rawQtdPendente !== undefined && rawQtdPendente < computedQtdSolicitada) {
+        computedQtdRecebida = computedQtdSolicitada - rawQtdPendente;
+      }
+      
       const matched = obras.find(o => o.nome.toLowerCase().trim() === finalObra.toLowerCase().trim());
       results.push({
         id: finalId,
         insumo: rawInsumo,
         codigo: finalCodigo,
         obra: finalObra,
-        obraId: matched ? matched.id : undefined,
-        qtdSolicitada: isNaN(rawQtd) || rawQtd <= 0 ? 1 : rawQtd,
-        qtdRecebida: 0,
+        obraId: finalObraId || (matched ? matched.id : undefined),
+        qtdSolicitada: computedQtdSolicitada,
+        qtdRecebida: computedQtdRecebida,
         unidade: rawUnidade || 'un',
-        status: 'Pendente',
-        dataPedido: finalData
+        status: statusMapped,
+        dataPedido: finalData,
+        dataChegada: statusMapped === 'Entregue' ? new Date().toLocaleDateString('pt-BR') : undefined,
+        
+        // Extended Sienge properties
+        codComprador: rawCodComprador || undefined,
+        fornecedor: rawFornecedor || undefined,
+        codDetalhe: rawCodDetalhe || undefined,
+        descricaoDetalhe: rawDescDetalhe || undefined,
+        marca: rawMarca || undefined,
+        descricaoUnidade: rawDescUnidade || undefined,
+        qtdPendenteImportada: rawQtdPendente
       });
     }
     
@@ -859,13 +1112,81 @@ export default function App() {
 
   const handleLoadDemoSienge = () => {
     const demoItems: Pedido[] = [
-      { id: 'PC-2024-0891', insumo: 'Cimento CP-II 50kg', codigo: 'CIM-001', obra: 'Residencial Alvorada', qtdSolicitada: 750, qtdRecebida: 0, unidade: 'un', status: 'Pendente', dataPedido: '16/06/2026' },
-      { id: 'PC-2024-0891', insumo: 'Torneira Esfera Brass 1/2', codigo: 'TOR-009', obra: 'Residencial Alvorada', qtdSolicitada: 45, qtdRecebida: 0, unidade: 'un', status: 'Pendente', dataPedido: '16/06/2026' },
-      { id: 'PC-2026-1010', insumo: 'Gesso Acartonado Tabica 3m', codigo: 'GES-012', obra: 'Residencial Alvorada', qtdSolicitada: 120, qtdRecebida: 0, unidade: 'un', status: 'Pendente', dataPedido: '16/06/2026' },
-      { id: 'PC-2026-1010', insumo: 'Parafuso Drywall GN 25', codigo: 'PAR-013', obra: 'Residencial Alvorada', qtdSolicitada: 2000, qtdRecebida: 0, unidade: 'un', status: 'Pendente', dataPedido: '16/06/2026' },
+      { 
+        id: 'PC-2026-9040', 
+        insumo: 'Cimento CP-II 50kg', 
+        codigo: 'CIM-001', 
+        obra: 'Residencial Alvorada', 
+        obraId: 'OB-101',
+        qtdSolicitada: 750, 
+        qtdRecebida: 0, 
+        unidade: 'SC', 
+        status: 'Pendente', 
+        dataPedido: '10/06/2026',
+        codComprador: 'COMP-A',
+        fornecedor: 'Votorantim Metais',
+        codDetalhe: 'DET-CIM',
+        descricaoDetalhe: 'Premium de Secagem Rápida',
+        marca: 'Votoran',
+        descricaoUnidade: 'Saco 50kg'
+      },
+      { 
+        id: 'PC-2026-9040', 
+        insumo: 'Pedra Britada Zero', 
+        codigo: 'PED-102', 
+        obra: 'Residencial Alvorada', 
+        obraId: 'OB-101',
+        qtdSolicitada: 25, 
+        qtdRecebida: 0, 
+        unidade: 'm³', 
+        status: 'Pendente', 
+        dataPedido: '12/06/2026',
+        codComprador: 'COMP-B',
+        fornecedor: 'Pedreira Guarulhos Ltda',
+        codDetalhe: 'DET-PED',
+        descricaoDetalhe: 'Material Lavado de Alta Pureza',
+        marca: 'Nacional',
+        descricaoUnidade: 'Metro Cúbico'
+      },
+      { 
+        id: 'PC-2026-2510', 
+        insumo: 'Tubo PVC Soldável 25mm', 
+        codigo: 'TUB-404', 
+        obra: 'Vista Parl', 
+        obraId: 'OB-202',
+        qtdSolicitada: 150, 
+        qtdRecebida: 0, 
+        unidade: 'm', 
+        status: 'Pendente', 
+        dataPedido: '14/06/2026',
+        codComprador: 'COMP-A',
+        fornecedor: 'Tigre S/A Tubos',
+        codDetalhe: 'DET-TUB',
+        descricaoDetalhe: 'Série Reforçada Predial Classe A',
+        marca: 'Tigre',
+        descricaoUnidade: 'Metros lineares'
+      },
+      { 
+        id: 'PC-2026-2510', 
+        insumo: 'Curva PVC 90 graus 25mm', 
+        codigo: 'CUR-405', 
+        obra: 'Vista Parl', 
+        obraId: 'OB-202',
+        qtdSolicitada: 80, 
+        qtdRecebida: 0, 
+        unidade: 'un', 
+        status: 'Pendente', 
+        dataPedido: '15/06/2026',
+        codComprador: 'COMP-A',
+        fornecedor: 'Amanco Brasil',
+        codDetalhe: 'DET-CUR',
+        descricaoDetalhe: 'Conexão Predial Água Fria',
+        marca: 'Amanco',
+        descricaoUnidade: 'Unidade'
+      }
     ];
     setParsedImportItems(demoItems);
-    triggerToast('Planilha modelo Sienge (4 itens) carregada para testes!', 'info');
+    triggerToast('Planilha modelo Sienge avançada (4 itens) carregada para testes!', 'info');
   };
 
   // Synchronizes state with Google Sheets App Script URL
@@ -1139,7 +1460,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
       return;
     }
 
-    setPedidos(pedidos.map(p => p.id === editingPedido.id ? {
+    setPedidos(pedidos.map(p => (p.id === editingPedido.id && p.codigo === editingPedido.codigo) ? {
       ...editingPedido,
       insumo: editingPedido.insumo.trim()
     } : p));
@@ -1917,16 +2238,40 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                 <div className="text-yellow-500/90 text-[10px] mt-0.5">{p.codigo || '-'}</div>
                               </td>
                               <td className="px-4 py-3.5">
-                                <span className="font-semibold text-white text-sm">{p.insumo}</span>
-                                <span className="block text-[10px] text-slate-500 mt-0.5">Unidade: {p.unidade}</span>
+                                <div className="font-semibold text-white text-sm">{p.insumo}</div>
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 mt-1">
+                                  <span>Unid: <strong>{p.unidade}</strong>{p.descricaoUnidade ? ` (${p.descricaoUnidade})` : ''}</span>
+                                  {p.marca && <span className="px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded font-mono">marca: {p.marca}</span>}
+                                  {p.fornecedor && <span className="text-purple-400">forn: <strong>{p.fornecedor}</strong></span>}
+                                  {p.codComprador && <span className="text-blue-400 font-mono">comprador: <strong>{p.codComprador}</strong></span>}
+                                </div>
+                                {p.descricaoDetalhe && (
+                                  <div className="text-[10px] text-slate-400 font-serif italic mt-0.5">
+                                    “{p.descricaoDetalhe}” {p.codDetalhe && <span className="font-mono text-[9px] text-slate-500">[{p.codDetalhe}]</span>}
+                                  </div>
+                                )}
                               </td>
-                              <td className="px-4 py-3.5 text-slate-400 font-medium">
-                                <span className="flex items-center gap-1">
+                              <td className="px-4 py-3.5 text-slate-300 font-medium whitespace-nowrap">
+                                <div className="flex items-center gap-1 text-slate-300">
                                   <MapPin size={11} className="text-slate-500 inline" />
                                   {p.obra}
-                                </span>
+                                </div>
+                                {p.obraId && (
+                                  <div className="text-[10px] text-slate-500 mt-0.5 font-mono">Cód: {p.obraId}</div>
+                                )}
                               </td>
-                              <td className="px-4 py-3.5 text-slate-400 font-mono text-[11px]">{p.dataPedido}</td>
+                              <td className="px-4 py-3.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                                <div className="text-slate-300 font-bold">{p.dataPedido}</div>
+                                <div className="text-[10px] text-purple-400/95 font-sans mt-0.5">
+                                  {p.status === 'Entregue' ? (
+                                    <span className="flex items-center gap-1 bg-purple-500/5 px-1.5 py-0.5 rounded border border-purple-500/10">⏱️ Entregue em {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
+                                  ) : p.status === 'Cancelado' ? (
+                                    <span className="flex items-center gap-1 text-slate-500">⏱️ Cancelado</span>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-amber-500/90 font-medium">⏱️ Ativo há {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="px-4 py-3.5 text-right font-semibold">
                                 <div>
                                   <span className="text-slate-300">{p.qtdSolicitada}</span>
@@ -2036,11 +2381,35 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               </span>
                             </div>
 
+                            <div className="text-[10px] text-purple-400/95 font-sans mb-1.5 inline-block font-medium">
+                              {p.status === 'Entregue' ? (
+                                <span className="bg-purple-500/5 px-2 py-0.5 rounded border border-purple-500/10 block">⏱️ Entregue em {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
+                              ) : p.status === 'Cancelado' ? (
+                                <span className="text-slate-500 block">⏱️ Cancelado</span>
+                              ) : (
+                                <span className="bg-amber-500/5 text-amber-400 border border-amber-500/10 px-2 py-0.5 rounded block">⏱️ Ativo há {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
+                              )}
+                            </div>
+
                             <h4 className="text-base font-semibold text-white mb-1">{p.insumo}</h4>
-                            <p className="text-xs text-slate-400 flex items-center gap-1 mb-4">
+                            
+                            <p className="text-xs text-slate-400 flex items-center gap-1 mb-2">
                               <MapPin size={12} className="text-slate-500" />
-                              {p.obra}
+                              {p.obra} {p.obraId ? `[${p.obraId}]` : ''}
                             </p>
+
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500 mb-3.5 border-t border-slate-800/40 pt-2">
+                              <span>Unid: <strong>{p.unidade}</strong>{p.descricaoUnidade ? ` (${p.descricaoUnidade})` : ''}</span>
+                              {p.marca && <span className="px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded font-mono">marca: {p.marca}</span>}
+                              {p.fornecedor && <span className="text-purple-400">forn: <strong>{p.fornecedor}</strong></span>}
+                              {p.codComprador && <span className="text-blue-400 font-mono">comprador: {p.codComprador}</span>}
+                            </div>
+
+                            {p.descricaoDetalhe && (
+                              <div className="text-xs text-slate-450 italic font-serif leading-relaxed mb-4 bg-slate-900/40 p-2 rounded border border-slate-800/40">
+                                “{p.descricaoDetalhe}” {p.codDetalhe && <span className="font-mono text-[9px] text-slate-500">[{p.codDetalhe}]</span>}
+                              </div>
+                            )}
                           </div>
 
                           {/* Order Progress Details */}
@@ -3377,23 +3746,84 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Nome do Insumo:</label>
+                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Nome do Insumo (Destaque):</label>
                 <input
                   type="text"
                   value={editingPedido.insumo}
                   onChange={(e) => setEditingPedido({ ...editingPedido, insumo: e.target.value })}
-                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0"
+                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0 font-medium text-purple-200"
                 />
               </div>
 
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Código do Insumo:</label>
-                <input
-                  type="text"
-                  value={editingPedido.codigo}
-                  onChange={(e) => setEditingPedido({ ...editingPedido, codigo: e.target.value.toUpperCase() })}
-                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0 font-mono"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Código do Insumo:</label>
+                  <input
+                    type="text"
+                    value={editingPedido.codigo}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, codigo: e.target.value.toUpperCase() })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Marca / Fabricante:</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Tigre, Votoran..."
+                    value={editingPedido.marca || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, marca: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Fornecedor:</label>
+                  <input
+                    type="text"
+                    placeholder="Nome do Fornecedor..."
+                    value={editingPedido.fornecedor || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, fornecedor: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Cód. Comprador:</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: COMP-A"
+                    value={editingPedido.codComprador || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, codComprador: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Cód. Detalhe:</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: DET-CIM"
+                    value={editingPedido.codDetalhe || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, codDetalhe: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Descrição do Detalhe:</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Secagem Rápida"
+                    value={editingPedido.descricaoDetalhe || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, descricaoDetalhe: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -3423,13 +3853,14 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Unidade de Medida:</label>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Unid. Medida (Símbolo):</label>
                   <select
                     value={editingPedido.unidade}
                     onChange={(e) => setEditingPedido({ ...editingPedido, unidade: e.target.value })}
                     className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-xs rounded-lg p-2.5"
                   >
                     <option value="un">un (unidade)</option>
+                    <option value="SC">SC (Saco 50kg)</option>
                     <option value="kg">kg (quilograma)</option>
                     <option value="m³">m³ (metro cúbico)</option>
                     <option value="m²">m² (metro quadrado)</option>
@@ -3437,6 +3868,19 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   </select>
                 </div>
 
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5 font-mono">Descrição Unidade:</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Saco de 50 Quilos"
+                    value={editingPedido.descricaoUnidade || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, descricaoUnidade: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-slate-400 font-semibold block mb-1.5">Status:</label>
                   <select
@@ -3449,6 +3893,16 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                     <option value="Entregue">Entregue</option>
                     <option value="Cancelado">Cancelado</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400 font-semibold block mb-1.5">Data Pedido:</label>
+                  <input
+                    type="text"
+                    value={editingPedido.dataPedido || ''}
+                    onChange={(e) => setEditingPedido({ ...editingPedido, dataPedido: e.target.value })}
+                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:border-purple-500 focus:outline-none focus:ring-0 font-mono"
+                  />
                 </div>
               </div>
 
