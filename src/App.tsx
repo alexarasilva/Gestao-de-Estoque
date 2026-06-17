@@ -871,14 +871,52 @@ export default function App() {
     if (sheetData.length <= 1) return [];
     
     let headerRowIndex = 0;
-    for (let r = 0; r < Math.min(10, sheetData.length); r++) {
+    let foundHeader = false;
+    
+    // Step 1: Let's search for a row containing at least 3 distinct Sienge header keywords
+    for (let r = 0; r < Math.min(15, sheetData.length); r++) {
       const row = sheetData[r];
-      if (row && row.some(cell => {
-        const s = String(cell).toLowerCase();
-        return s.includes('pedido') || s.includes('insumo') || s.includes('obra') || s.includes('quantidade');
-      })) {
-        headerRowIndex = r;
-        break;
+      if (row) {
+        let matchCount = 0;
+        row.forEach(cell => {
+          const s = String(cell || '').toLowerCase().trim();
+          if (
+            s.includes('pedido') ||
+            s.includes('insumo') ||
+            s.includes('obra') ||
+            s.includes('fornecedor') ||
+            s.includes('comprador') ||
+            s.includes('marca') ||
+            s.includes('quantidade') ||
+            s.includes('quant.') ||
+            s.includes('unidade') ||
+            s.includes('emissão') ||
+            s.includes('emissao') ||
+            s.includes('detalhe')
+          ) {
+            matchCount++;
+          }
+        });
+        if (matchCount >= 3) {
+          headerRowIndex = r;
+          foundHeader = true;
+          break;
+        }
+      }
+    }
+    
+    // Step 2: Fallback to any row with at least 1 typical match if no robust header row was found
+    if (!foundHeader) {
+      for (let r = 0; r < Math.min(10, sheetData.length); r++) {
+        const row = sheetData[r];
+        if (row && row.some(cell => {
+          const s = String(cell || '').toLowerCase();
+          return s.includes('nº pedido') || s.includes('n° pedido') || s.includes('data pedido') || s.includes('descrição insumo');
+        })) {
+          headerRowIndex = r;
+          foundHeader = true;
+          break;
+        }
       }
     }
     
@@ -2404,6 +2442,14 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                     <option value="Entregue">Marcar Completo</option>
                                     <option value="Cancelado">Marcar Cancelado</option>
                                   </select>
+
+                                  {p.status === 'Entregue' ? (
+                                    <span className="text-[10px] text-purple-400/90 font-medium tracking-wide mt-0.5">⏱️ Entregue em {calculateDaysElapsed(p.dataPedido, p.status, p.dataChegada)} dias</span>
+                                  ) : p.status === 'Cancelado' ? (
+                                    <span className="text-[10px] text-slate-500 tracking-wide mt-0.5">⏱️ Cancelado</span>
+                                  ) : (
+                                    <span className="text-[10px] text-amber-500 font-medium tracking-wide mt-0.5">⏱️ Ativo há {calculateDaysElapsed(p.dataPedido, p.status, p.dataChegada)} dias</span>
+                                  )}
                                 </div>
                               </td>
 
@@ -2490,11 +2536,11 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
                             <div className="text-[10px] text-purple-400/95 font-sans mb-1.5 inline-block font-medium">
                               {p.status === 'Entregue' ? (
-                                <span className="bg-purple-500/5 px-2 py-0.5 rounded border border-purple-500/10 block">⏱️ Entregue em {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
+                                <span className="bg-purple-500/5 px-2 py-0.5 rounded border border-purple-500/10 block">⏱️ Entregue em {calculateDaysElapsed(p.dataPedido, p.status, p.dataChegada)} dias</span>
                               ) : p.status === 'Cancelado' ? (
                                 <span className="text-slate-500 block">⏱️ Cancelado</span>
                               ) : (
-                                <span className="bg-amber-500/5 text-amber-400 border border-amber-500/10 px-2 py-0.5 rounded block">⏱️ Ativo há {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
+                                <span className="bg-amber-500/5 text-amber-400 border border-amber-500/10 px-2 py-0.5 rounded block">⏱️ Ativo há {calculateDaysElapsed(p.dataPedido, p.status, p.dataChegada)} dias</span>
                               )}
                             </div>
 
