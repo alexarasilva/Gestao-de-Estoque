@@ -906,12 +906,12 @@ export default function App() {
     headers.forEach((h, idx) => {
       const s = h.toLowerCase().trim();
       
-      // 1. Nº Pedido
-      if (s === 'nº pedido' || s === 'npedido' || s === 'numero pedido' || s === 'número pedido' || s.includes('nº ped') || s.includes('num_ped') || s === 'pedido' || s === 'id' || s === 'pc') {
+      // 1. Nº Pedido (supporting degree symbol °, ordinal index º, no. abbreviation, and case insensitivity)
+      if (s === 'nº pedido' || s === 'n° pedido' || s === 'npedido' || s === 'n°pedido' || s === 'nºpedido' || s === 'numero pedido' || s === 'número pedido' || s.includes('nº ped') || s.includes('n° ped') || s.includes('num_ped') || s === 'pedido' || s === 'id' || s === 'pc') {
         colId = idx;
       }
       // 2. Data pedido
-      else if (s === 'data pedido' || s === 'data do pedido' || s === 'data emissao' || s === 'data emissão' || s.includes('data') || s.includes('emissão')) {
+      else if (s === 'data pedido' || s === 'data do pedido' || s === 'data emissao' || s === 'data emissão' || s.includes('data') || s.includes('emissão') || s.includes('emissao') || s === 'dt pedido' || s === 'dt_pedido') {
         colData = idx;
       }
       // 3. Cód. Obra
@@ -1031,8 +1031,19 @@ export default function App() {
         } else {
           rawData = String(rawDataVal).trim();
         }
+      } else if (rawDataVal instanceof Date) {
+        const dy = String(rawDataVal.getUTCDate()).padStart(2, '0');
+        const mn = String(rawDataVal.getUTCMonth() + 1).padStart(2, '0');
+        const yr = rawDataVal.getUTCFullYear();
+        rawData = `${dy}/${mn}/${yr}`;
       } else {
-        rawData = String(rawDataVal).trim();
+        const trimmed = String(rawDataVal).trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+          const parts = trimmed.split('T')[0].split('-');
+          rawData = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+          rawData = trimmed;
+        }
       }
       
       // New fields parsing
