@@ -1,5 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
+import {
   LayoutDashboard,
   ClipboardList,
   BaggageClaim,
@@ -430,6 +442,24 @@ export default function App() {
       estoqueCritico,
     };
   }, [pedidos, stockInventory, selectedObra]);
+
+  const dashboardChartData = useMemo(() => {
+    const ordersSubset = pedidos.filter((p) => selectedObra === 'Todas as Obras' || p.obra === selectedObra);
+    const totalEntregues = ordersSubset.filter((p) => p.status === 'Entregue').length;
+    const totalParciais = ordersSubset.filter((p) => p.status === 'Parcial').length;
+    const totalPendentes = ordersSubset.filter((p) => p.status === 'Pendente').length;
+    
+    return [
+      { name: 'Totalmente Entregue', value: totalEntregues, fill: '#10b981' },
+      { name: 'Parcialmente Entregue', value: totalParciais, fill: '#3b82f6' },
+      { name: 'Pendente', value: totalPendentes, fill: '#f59e0b' }
+    ];
+  }, [pedidos, selectedObra]);
+
+  const dashboardCriticalStockList = useMemo(() => {
+    const subsetStock = stockInventory.filter((item) => selectedObra === 'Todas as Obras' || item.obra === selectedObra);
+    return subsetStock.filter(item => item.recebido > 0 && (item.saldo <= (item.recebido * 0.15)));
+  }, [stockInventory, selectedObra]);
 
   // Distinct list of insumos belonging to a specific construction site for withdrawal dropdown
   const insumosForWithdrawal = useMemo(() => {
@@ -1015,9 +1045,10 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
     });
   };
 
-  const handleRenameObra = (oldName: string, newName: string) => {
-    executeGuardedAction('admin', 'Editar/Renomear Obra', () => {
+  const handleRenameObra = (oldName: string, newName: string, newId?: string) => {
+    executeGuardedAction('admin', 'Editar Obra', () => {
       const trimmedNew = newName.trim();
+      const trimmedId = newId ? newId.trim().toUpperCase() : '';
       if (!trimmedNew) {
         triggerToast("O novo nome não pode estar vazio.", "warn");
         return;
@@ -1026,13 +1057,23 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
         triggerToast("Este nome de obra já está em uso.", "warn");
         return;
       }
+
+      const oldObraObj = obras.find(o => o.nome === oldName);
+      if (trimmedId && oldObraObj && oldObraObj.id.toLowerCase() !== trimmedId.toLowerCase()) {
+        if (obras.map(o => o.id.toLowerCase()).includes(trimmedId.toLowerCase())) {
+          triggerToast("Este ID de obra já está cadastrado no sistema. Escolha outro.", "warn");
+          return;
+        }
+      }
       
+      const targetId = trimmedId || (oldObraObj ? oldObraObj.id : `OB-${101 + obras.length}`);
+
       // Update obras array
-      setObras(obras.map(o => o.nome === oldName ? { ...o, nome: trimmedNew } : o));
+      setObras(obras.map(o => o.nome === oldName ? { ...o, nome: trimmedNew, id: targetId } : o));
       
       // Cascade update pedidos and baixas
-      setPedidos(pedidos.map(p => p.obra === oldName ? { ...p, obra: trimmedNew } : p));
-      setBaixas(baixas.map(b => b.obra === oldName ? { ...b, obra: trimmedNew } : b));
+      setPedidos(pedidos.map(p => p.obra === oldName ? { ...p, obra: trimmedNew, obraId: targetId } : p));
+      setBaixas(baixas.map(b => b.obra === oldName ? { ...b, obra: trimmedNew, obraId: targetId } : b));
       
       // Keep UI filters aligned
       if (selectedObra === oldName) setSelectedObra(trimmedNew);
@@ -1040,7 +1081,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
       if (newWithdrawObra === oldName) setNewWithdrawObra(trimmedNew);
       
       setEditingObraName(null);
-      triggerToast(`Obra renomeada para "${trimmedNew}"!`, "success");
+      triggerToast(`Obra editada para "${trimmedNew}" (ID: ${targetId})!`, "success");
     });
   };
 
@@ -1264,7 +1305,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           <div className="flex items-center gap-2.5 mb-6">
             <LogoIcon className="w-9 h-9 shadow-lg shadow-yellow-500/10" />
             <div>
-              <h1 className="text-lg font-serif font-semibold tracking-tight text-white leading-tight">GestãoEstoque</h1>
+              <h1 className="text-base font-sans font-black tracking-tight text-white uppercase leading-none">Gestão de <span className="text-[#FFC800]">Estoque</span></h1>
               <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Controle local</p>
             </div>
           </div>
@@ -1550,226 +1591,173 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 </div>
               </div>
 
-              {/* Main Dashboard Interactive Table */}
-              <div className="bg-[#161920] border border-slate-800 rounded-xl overflow-hidden flex flex-col" id="dashboard-table-container">
+              {/* Main Dashboard Advanced Visual Statistics & Critical Inventory */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard-statistics-container">
                 
-                {/* Search and Filters Header */}
-                <div className="px-6 py-4.5 border-b border-slate-800 flex flex-col sm:flex-row gap-3 justify-between items-center bg-[#1C2028]">
+                {/* Left Card: Pedidos Statistics Chart & KPI */}
+                <div className="lg:col-span-7 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col justify-between" id="chart-pedidos-stats">
                   <div>
-                    <h2 className="text-base font-serif font-semibold text-white">Acompanhamento de Pedidos</h2>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Foque na entrada, verificação e atualização dos insumos contratados</p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    {/* Search Field */}
-                    <div className="relative w-full sm:w-60">
-                      <input
-                        id="search-input"
-                        type="text"
-                        placeholder="Filtrar insumo ou pedido..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-[#0F1115] border border-slate-700 rounded-md py-1.5 pl-8 pr-3 text-sm text-slate-300 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-base font-sans font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                          <BarChart3 size={16} className="text-emerald-400" />
+                          Estatísticas de Pedidos
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Métricas de entrega da obra: <strong className="text-emerald-400">{selectedObra}</strong></p>
+                      </div>
+                      <span className="text-[10px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-full">
+                        {selectedObra === 'Todas as Obras' ? 'Painel Geral' : 'Obra Selecionada'}
+                      </span>
                     </div>
 
-                    {/* Status Filter Tab Group */}
-                    <div className="flex bg-[#0F1115] p-1 rounded-md border border-slate-700 text-xs text-slate-400">
-                      {['Todos', 'Pendente', 'Parcial', 'Entregue'].map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => setStatusFilter(st)}
-                          className={`px-2.5 py-1 rounded transition-colors ${
-                            statusFilter === st ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
-                          }`}
-                        >
-                          {st}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Report Download Trigger */}
-                    <button
-                      id="btn-export-csv"
-                      onClick={handleExportCSV}
-                      title="Exportar CSV"
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-slate-400 hover:text-white transition-all shrink-0"
-                    >
-                      <Download size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Database Table Rendering */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse" id="orders-dashboard-table">
-                    <thead>
-                      <tr className="text-slate-400 font-medium border-b border-slate-800 bg-[#12151C] text-xs">
-                        <th className="px-6 py-3.5">ID Pedido</th>
-                        <th className="px-6 py-3.5">Obra / Insumo</th>
-                        <th className="px-6 py-3.5 text-right">Qtd. Solicitada</th>
-                        <th className="px-6 py-3.5 text-right">Qtd. Recebida</th>
-                        <th className="px-6 py-3.5">Progresso</th>
-                        <th className="px-6 py-3.5">Status</th>
-                        <th className="px-6 py-3.5 text-center">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/80">
-                      {filteredPedidos.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="text-center py-10 text-slate-500">
-                            <Layers size={36} className="mx-auto text-slate-700 mb-2.5" />
-                            Nenhum pedido atende aos filtros definidos.
-                          </td>
-                        </tr>
+                    {/* Chart Render */}
+                    <div className="w-full bg-[#0F1115] border border-slate-800/80 rounded-lg p-4 mb-5" style={{ minHeight: '260px' }}>
+                      {dashboardChartData.every(item => item.value === 0) ? (
+                        <div className="h-[230px] flex flex-col items-center justify-center text-slate-500">
+                          <ClipboardList size={32} className="text-slate-700 mb-2" />
+                          <p className="text-xs">Nenhum pedido cadastrado para esta obra.</p>
+                        </div>
                       ) : (
-                        filteredPedidos.map((ped) => {
-                          const percent = Math.min(
-                            100,
-                            Math.round((ped.qtdRecebida / ped.qtdSolicitada) * 100)
-                          );
-                          return (
-                            <tr key={ped.id} className="hover:bg-slate-800/20 transition-colors">
-                              {/* Order ID */}
-                              <td className="px-6 py-4 font-mono text-xs text-slate-500 font-bold">
-                                {ped.id}
-                              </td>
-
-                              {/* Material name & Construction Site */}
-                              <td className="px-6 py-4">
-                                <div className="text-white font-medium text-sm">{ped.insumo}</div>
-                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                  <MapPin size={10} className="text-slate-600" />
-                                  {ped.obra}
-                                </div>
-                              </td>
-
-                              {/* Requested Quantity */}
-                              <td className="px-6 py-4 text-right font-medium text-slate-300">
-                                {ped.qtdSolicitada.toLocaleString('pt-BR')} {ped.unidade}
-                              </td>
-
-                              {/* Received Quantity */}
-                              <td className="px-6 py-4 text-right">
-                                <span className={`font-semibold ${ped.qtdRecebida > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                  {ped.qtdRecebida.toLocaleString('pt-BR')}
-                                </span>
-                                <span className="text-xs text-slate-500"> /{ped.unidade}</span>
-                              </td>
-
-                              {/* Small Meter bar */}
-                              <td className="px-6 py-4 min-w-[120px]">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full ${
-                                        ped.status === 'Entregue'
-                                          ? 'bg-emerald-500'
-                                          : ped.status === 'Parcial'
-                                          ? 'bg-blue-400'
-                                          : ped.status === 'Cancelado'
-                                          ? 'bg-red-500'
-                                          : 'bg-amber-500/40'
-                                      }`}
-                                      style={{ width: `${percent}%` }}
-                                    ></div>
-                                  </div>
-                                  <span className="text-[10px] font-mono text-slate-400 w-7 text-right">
-                                    {percent}%
-                                  </span>
-                                </div>
-                              </td>
-
-                              {/* Status Badge */}
-                              <td className="px-6 py-4">
-                                <span
-                                  className={`inline-block px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
-                                    ped.status === 'Entregue'
-                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                      : ped.status === 'Parcial'
-                                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                      : ped.status === 'Cancelado'
-                                      ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                      : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                  }`}
-                                >
-                                  {ped.status === 'Entregue' ? 'Entregue' : ped.status === 'Parcial' ? 'Parcial' : ped.status === 'Cancelado' ? 'Cancelado' : 'Pendente'}
-                                </span>
-                              </td>
-
-                              {/* Action Call */}
-                              <td className="px-6 py-4 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  {ped.status !== 'Entregue' && ped.status !== 'Cancelado' ? (
-                                    <button
-                                      onClick={() => openReceiveModal(ped.id, ped.codigo || '')}
-                                      className="px-2.5 py-1 text-xs bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded border border-emerald-500/30 transition-all font-semibold"
-                                      title="Dar Entrada Física"
-                                    >
-                                      Entrada
-                                    </button>
-                                  ) : (
-                                    <span className="text-xs text-slate-500">Concluído</span>
-                                  )}
-                                  
-                                  {/* Administrative Pencil Action */}
-                                  <button
-                                    onClick={() => handleOpenEditPedidoModal(ped)}
-                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all"
-                                    title="Editar Especificações"
-                                  >
-                                    <Edit size={14} />
-                                  </button>
-                                  
-                                  {/* Administrative Trash Action */}
-                                  <button
-                                    onClick={() => handleDeletePedido(ped.id)}
-                                    className="p-1 text-rose-550/70 hover:text-rose-400 hover:bg-slate-800 rounded transition-all"
-                                    title="Excluir Definitivamente"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
+                        <div style={{ width: '100%', height: 230 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dashboardChartData} margin={{ top: 15, right: 10, left: -20, bottom: 5 }}>
+                              <XAxis 
+                                dataKey="name" 
+                                stroke="#64748b" 
+                                fontSize={10} 
+                                tickLine={false} 
+                                axisLine={false} 
+                              />
+                              <YAxis 
+                                stroke="#64748b" 
+                                fontSize={10} 
+                                tickLine={false} 
+                                axisLine={false} 
+                                allowDecimals={false} 
+                              />
+                              <RechartsTooltip 
+                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '6px' }} 
+                                itemStyle={{ color: '#f8fafc', fontSize: '11px' }}
+                                labelStyle={{ color: '#94a3b8', fontWeight: 'bold', fontSize: '10px' }}
+                              />
+                              <Bar dataKey="value" stroke="none" radius={[4, 4, 0, 0]} maxBarSize={45}>
+                                {dashboardChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       )}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+
+                  {/* Pertinent custom KPI summary: Supplies Efficiency Rate */}
+                  <div className="bg-[#1C2028] border border-slate-800 p-4.5 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                        <CheckCircle size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-200">Eficiência de Atendimento</h4>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Proporção ponderada de pedidos atendidos, entregas e andamento.</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-0">
+                      <span className="text-2xl font-black font-sans text-emerald-400">
+                        {(() => {
+                          const totEntregas = dashboardChartData[0]?.value || 0;
+                          const totParciais = dashboardChartData[1]?.value || 0;
+                          const totPendentes = dashboardChartData[2]?.value || 0;
+                          const total = totEntregas + totParciais + totPendentes;
+                          if (total === 0) return '100%';
+                          return `${Math.round(((totEntregas * 100) + (totParciais * 50)) / total)}%`;
+                        })()}
+                      </span>
+                      <span className="text-[10.5px] text-slate-400 font-mono">Índice Conclusão</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Footer and summary of data table */}
-                <div className="p-4.5 border-t border-slate-800 bg-[#161920] flex flex-col sm:flex-row gap-4 items-center justify-between text-xs text-slate-500">
-                  <div>
-                    Exibindo <span className="text-slate-300 font-semibold">{filteredPedidos.length}</span> de <span className="text-slate-300 font-semibold">{pedidos.length}</span> registros totais
+                {/* Right Card: Critical Stock List (<15%) */}
+                <div className="lg:col-span-5 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col" id="chart-insumos-criticos">
+                  <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                    <h2 className="text-base font-sans font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-rose-500" />
+                      Alerta: Estoque Crítico
+                    </h2>
+                    <span className="text-[10px] text-slate-500 font-mono">Saldo &lt; 15%</span>
+                  </div>
+
+                  <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                    Lista de insumos ativos recebidos que estão com saldo de estoque baixo em relação ao fornecido, necessitando de reabastecimento.
+                  </p>
+
+                  <div className="flex-1 overflow-y-auto max-h-[350px] pr-1 space-y-3">
+                    {dashboardCriticalStockList.length === 0 ? (
+                      <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center p-6 bg-[#0F1115] border border-dashed border-slate-800 rounded-lg">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
+                          <CheckCircle size={20} />
+                        </div>
+                        <p className="text-xs font-bold text-white">Nenhum Insumo Crítico</p>
+                        <p className="text-[10.5px] text-slate-500 mt-1 max-w-[200px]">Todos os insumos possuem saldo estável ou acima de 15% do recebido.</p>
+                      </div>
+                    ) : (
+                      dashboardCriticalStockList.map((item) => {
+                        const ratio = item.recebido > 0 ? (item.saldo / item.recebido) : 0;
+                        const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+                        
+                        return (
+                          <div key={`${item.obra}:::${item.codigo}:::${item.insumo}`} className="p-3 bg-[#0F1115] border border-slate-800 rounded-lg hover:border-slate-700 transition-all flex flex-col gap-2 group notranslate" translate="no">
+                            <div className="flex justify-between items-start">
+                              <div className="max-w-[70%]">
+                                <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">{item.insumo}</h4>
+                                <div className="flex gap-1.5 mt-0.5 items-center">
+                                  <span className="text-[9px] font-mono text-slate-500">COD: {item.codigo || 'S/C'}</span>
+                                  {selectedObra === 'Todas as Obras' && (
+                                    <>
+                                      <span className="text-[#3b82f6]/40">•</span>
+                                      <span className="text-[9.5px] text-slate-400 font-semibold truncate max-w-[120px]">{item.obra}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-bold font-mono text-rose-500">{item.saldo}</span>
+                                <span className="text-[10px] text-slate-500"> / {item.recebido} {item.unidade}</span>
+                              </div>
+                            </div>
+
+                            {/* visual progress gauge */}
+                            <div className="w-full">
+                              <div className="flex justify-between text-[9px] text-slate-500 font-mono mb-1">
+                                <span>Percentual Disponível</span>
+                                <span className="font-bold text-rose-400">{percent}%</span>
+                              </div>
+                              <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className="bg-gradient-to-r from-red-650 to-rose-500 h-full rounded-full" 
+                                  style={{ width: `${percent}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <span className="font-medium text-slate-400">
-                      Filtro Atual:{' '}
-                      <span className="text-white ml-1 font-semibold underline decoration-emerald-500">
-                        {selectedObra}
-                      </span>
+                  {/* Insight and Recommendations */}
+                  <div className="mt-4 p-3 bg-rose-500/5 border border-rose-500/10 rounded-lg text-[11px] text-rose-400 flex items-start gap-2">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <span>
+                      {dashboardCriticalStockList.length > 0 
+                        ? `Atenção: É recomendado solicitar novas ordens de compras no Sienge para os ${dashboardCriticalStockList.length} insumos de estoque críticos.`
+                        : 'Recomendação: Estoques regulares. Monitore diários para antecipar consumo de insumos pesados.'}
                     </span>
-                    
-                    <div className="flex gap-1" id="pagination-set">
-                      <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-700 hover:bg-slate-800 transition-all cursor-not-allowed">
-                        ‹
-                      </button>
-                      <button className="w-7 h-7 flex items-center justify-center rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold">
-                        1
-                      </button>
-                      <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-700 hover:bg-slate-800 transition-all text-slate-400">
-                        2
-                      </button>
-                      <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-700 hover:bg-slate-800 transition-all">
-                        ›
-                      </button>
-                    </div>
                   </div>
                 </div>
+
               </div>
             </div>
           )}
@@ -2558,30 +2546,56 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                       {obras.map((obrObj) => (
                         <div key={obrObj.id} className="flex items-center justify-between p-3 bg-[#0F1115] rounded-lg border border-slate-800 group hover:border-slate-700 transition-all">
                           {editingObraName === obrObj.nome ? (
-                            <div className="flex items-center gap-2 w-full">
-                              <input
-                                type="text"
-                                defaultValue={obrObj.nome}
-                                id={`input-rename-obra-${obrObj.id}`}
-                                className="bg-slate-900 border border-purple-500 text-xs text-white rounded px-2 py-1 w-full focus:outline-none"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleRenameObra(obrObj.nome, (e.target as HTMLInputElement).value);
-                                  } else if (e.key === 'Escape') {
-                                    setEditingObraName(null);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const val = (document.getElementById(`input-rename-obra-${obrObj.id}`) as HTMLInputElement)?.value;
-                                  handleRenameObra(obrObj.nome, val || '');
-                                }}
-                                className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold px-2"
-                              >
-                                Salvar
-                              </button>
+                            <div className="flex flex-col gap-2 w-full p-1 bg-[#0F1115] rounded">
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="col-span-1">
+                                  <label className="text-[9px] text-slate-500 font-mono block uppercase mb-1">ID</label>
+                                  <input
+                                    type="text"
+                                    defaultValue={obrObj.id}
+                                    id={`input-rename-id-${obrObj.id}`}
+                                    placeholder="Ex: OB-101"
+                                    className="bg-slate-900 border border-slate-700 text-xs text-white rounded px-2 py-1 w-full focus:outline-none uppercase font-mono"
+                                  />
+                                </div>
+                                <div className="col-span-2">
+                                  <label className="text-[9px] text-slate-500 font-mono block uppercase mb-1">Nome da Obra</label>
+                                  <input
+                                    type="text"
+                                    defaultValue={obrObj.nome}
+                                    id={`input-rename-obra-${obrObj.id}`}
+                                    className="bg-slate-900 border border-slate-700 text-xs text-white rounded px-2 py-1 w-full focus:outline-none"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const idVal = (document.getElementById(`input-rename-id-${obrObj.id}`) as HTMLInputElement)?.value;
+                                        handleRenameObra(obrObj.nome, (e.target as HTMLInputElement).value, idVal);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingObraName(null);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2 mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingObraName(null)}
+                                  className="text-[10px] text-slate-400 hover:text-slate-200 transition-colors py-0.5 px-2"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const idVal = (document.getElementById(`input-rename-id-${obrObj.id}`) as HTMLInputElement)?.value || '';
+                                    const val = (document.getElementById(`input-rename-obra-${obrObj.id}`) as HTMLInputElement)?.value || '';
+                                    handleRenameObra(obrObj.nome, val, idVal);
+                                  }}
+                                  className="text-white bg-purple-600 hover:bg-purple-500 text-[10px] font-bold px-2.5 py-1 rounded transition-all"
+                                >
+                                  Salvar
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <>
