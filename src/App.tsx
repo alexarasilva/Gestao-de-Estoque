@@ -972,14 +972,27 @@ export default function App() {
       }
     });
     
-    // Safety automatic index fallbacks
-    if (colId === -1) colId = headers.findIndex(h => /id|num/i.test(h)) !== -1 ? headers.findIndex(h => /id|num/i.test(h)) : 0;
-    if (colInsumo === -1) colInsumo = headers.findIndex(h => /ins|des|nom|itm/i.test(h)) !== -1 ? headers.findIndex(h => /ins|des|nom|itm/i.test(h)) : 1;
-    if (colCodigo === -1) colCodigo = headers.findIndex(h => /cod/i.test(h)) !== -1 ? headers.findIndex(h => /cod/i.test(h)) : 2;
-    if (colObra === -1) colObra = headers.findIndex(h => /obr|loc|fil/i.test(h)) !== -1 ? headers.findIndex(h => /obr|loc|fil/i.test(h)) : 3;
-    if (colQtd === -1) colQtd = headers.findIndex(h => /qtd|sol|qua/i.test(h)) !== -1 ? headers.findIndex(h => /qtd|sol|qua/i.test(h)) : 4;
-    if (colUnidade === -1) colUnidade = headers.findIndex(h => /un|um|med/i.test(h)) !== -1 ? headers.findIndex(h => /un|um|med/i.test(h)) : 5;
-    if (colData === -1) colData = headers.findIndex(h => /dat|emi/i.test(h)) !== -1 ? headers.findIndex(h => /dat|emi/i.test(h)) : 6;
+    // Safety automatic index fallbacks matching exact columns of the Sienge spreadsheet:
+    // A=0: Nº Pedido, B=1: Data pedido, C=2: Cód. Obra, D=3: Obra, E=4: Cód. Comprador,
+    // F=5: Fornecedor, G=6: Cód. Insumo, H=7: Descrição insumo, I=8: Cód. Detalhe,
+    // J=9: Descrição detalhe, K=10: Descrição marca, L=11: Símbolo unidade medida,
+    // M=12: Descrição unidade medida, N=13: Quant. solicitada, O=14: Status entrega, P=15: Quant. pendente
+    if (colId === -1) colId = 0;
+    if (colData === -1) colData = 1;
+    if (colCodObra === -1) colCodObra = 2;
+    if (colObra === -1) colObra = 3;
+    if (colCodComprador === -1) colCodComprador = 4;
+    if (colFornecedor === -1) colFornecedor = 5;
+    if (colCodigo === -1) colCodigo = 6;
+    if (colInsumo === -1) colInsumo = 7;
+    if (colCodDetalhe === -1) colCodDetalhe = 8;
+    if (colDescDetalhe === -1) colDescDetalhe = 9;
+    if (colMarca === -1) colMarca = 10;
+    if (colUnidade === -1) colUnidade = 11;
+    if (colDescUnidade === -1) colDescUnidade = 12;
+    if (colQtd === -1) colQtd = 13;
+    if (colStatusEntrega === -1) colStatusEntrega = 14;
+    if (colQtdPendente === -1) colQtdPendente = 15;
     
     const results: Pedido[] = [];
     let lastOrderId = '';
@@ -991,14 +1004,36 @@ export default function App() {
       const row = sheetData[r];
       if (!row || row.length === 0 || row.every(cell => cell === null || cell === '')) continue;
       
-      let rawId = colId !== -1 && row[colId] !== undefined ? String(row[colId]).trim() : '';
+      let rawIdVal = colId !== -1 && row[colId] !== undefined ? row[colId] : '';
+      let rawId = '';
+      if (typeof rawIdVal === 'number') {
+        rawId = String(Math.floor(rawIdVal));
+      } else {
+        rawId = String(rawIdVal).trim();
+      }
+
       let rawInsumo = colInsumo !== -1 && row[colInsumo] !== undefined ? String(row[colInsumo]).trim() : '';
       let rawCodigo = colCodigo !== -1 && row[colCodigo] !== undefined ? String(row[colCodigo]).trim() : '';
       let rawObra = colObra !== -1 && row[colObra] !== undefined ? String(row[colObra]).trim() : '';
       let rawCodObra = colCodObra !== -1 && row[colCodObra] !== undefined ? String(row[colCodObra]).trim() : '';
       let rawQtd = colQtd !== -1 && row[colQtd] !== undefined ? parseFloat(String(row[colQtd]).replace(/[^\d.-]/g, '')) : 0;
       let rawUnidade = colUnidade !== -1 && row[colUnidade] !== undefined ? String(row[colUnidade]).trim() : 'un';
-      let rawData = colData !== -1 && row[colData] !== undefined ? String(row[colData]).trim() : '';
+      
+      let rawDataVal = colData !== -1 && row[colData] !== undefined ? row[colData] : '';
+      let rawData = '';
+      if (typeof rawDataVal === 'number') {
+        const dateObj = new Date((rawDataVal - 25569) * 86400 * 1000);
+        if (!isNaN(dateObj.getTime())) {
+          const dy = String(dateObj.getUTCDate()).padStart(2, '0');
+          const mn = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+          const yr = dateObj.getUTCFullYear();
+          rawData = `${dy}/${mn}/${yr}`;
+        } else {
+          rawData = String(rawDataVal).trim();
+        }
+      } else {
+        rawData = String(rawDataVal).trim();
+      }
       
       // New fields parsing
       let rawCodComprador = colCodComprador !== -1 && row[colCodComprador] !== undefined ? String(row[colCodComprador]).trim() : '';
