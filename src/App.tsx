@@ -38,6 +38,7 @@ import {
   Info,
   Layers,
   ChevronLeft,
+  Check,
   Lock,
   Unlock,
   Shield,
@@ -376,7 +377,7 @@ export default function App() {
   const [qtdReceiveInput, setQtdReceiveInput] = useState<number>(0);
 
   // Sienge excel/spreadsheet import state
-  const [pedidosViewMode, setPedidosViewMode] = useState<'cards' | 'table'>('cards');
+  const [pedidosViewMode, setPedidosViewMode] = useState<'cards' | 'table'>('table');
   const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [parsedImportItems, setParsedImportItems] = useState<Pedido[]>([]);
@@ -2209,15 +2210,15 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               {pedidosViewMode === 'table' ? (
                 <div className="overflow-x-auto border border-slate-800 rounded-xl bg-[#161920]">
                   <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                    <thead className="bg-[#1C2028] text-slate-400 text-[11px] uppercase font-mono tracking-wider border-b border-slate-800">
+                    <thead className="bg-[#1C2028] text-slate-450 text-[11px] uppercase font-mono tracking-wider border-b border-slate-800">
                       <tr>
-                        <th className="px-4 py-3">ID Pedido / Código</th>
-                        <th className="px-4 py-3">Insumo / Material</th>
-                        <th className="px-4 py-3">Obra Destino</th>
-                        <th className="px-4 py-3">Data</th>
-                        <th className="px-4 py-3 text-right">Qtd. Solicitada / Recebida</th>
-                        <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 text-right">Ações</th>
+                        <th className="px-4 py-3.5">Código / Emissão</th>
+                        <th className="px-4 py-3.5">C. Custo / Obra</th>
+                        <th className="px-4 py-3.5">Fornecedor</th>
+                        <th className="px-4 py-3.5">Insumo Sienge</th>
+                        <th className="px-4 py-3.5 text-center">Relação Recebida / Pedida</th>
+                        <th className="px-4 py-3.5">Status Logístico</th>
+                        <th className="px-4 py-3.5 text-right">Painel de Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-[#161920]">
@@ -2231,113 +2232,173 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                       ) : (
                         filteredPedidos.map((p) => {
                           const progressVal = Math.round((p.qtdRecebida / p.qtdSolicitada) * 100);
+                          const cleanCodeLine = (() => {
+                            const codInsuNum = p.codigo ? p.codigo.replace(/[^\d]/g, '') : '';
+                            const codDetNum = p.codDetalhe ? p.codDetalhe.replace(/[^\d]/g, '') : '';
+                            return [codInsuNum, codDetNum].filter(Boolean).join(' / ');
+                          })();
                           return (
-                            <tr key={`${p.id}-${p.codigo}`} className="hover:bg-slate-800/20 transition-all">
-                              <td className="px-4 py-3.5 font-mono text-[11px]">
-                                <div className="text-slate-300 font-bold">{p.id}</div>
-                                <div className="text-yellow-500/90 text-[10px] mt-0.5">{p.codigo || '-'}</div>
+                            <tr key={`${p.id}-${p.codigo}`} className="hover:bg-slate-800/20 transition-all font-sans">
+                              {/* CÓDIGO / EMISSÃO */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-white font-bold text-sm tracking-wide">{p.id}</div>
+                                <div className="text-slate-500 text-[11px] mt-1 font-mono">{p.dataPedido}</div>
                               </td>
-                              <td className="px-4 py-3.5">
-                                <div className="font-semibold text-white text-sm">{p.insumo}</div>
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 mt-1">
-                                  <span>Unid: <strong>{p.unidade}</strong>{p.descricaoUnidade ? ` (${p.descricaoUnidade})` : ''}</span>
-                                  {p.marca && <span className="px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded font-mono">marca: {p.marca}</span>}
-                                  {p.fornecedor && <span className="text-purple-400">forn: <strong>{p.fornecedor}</strong></span>}
-                                  {p.codComprador && <span className="text-blue-400 font-mono">comprador: <strong>{p.codComprador}</strong></span>}
-                                </div>
-                                {p.descricaoDetalhe && (
-                                  <div className="text-[10px] text-slate-400 font-serif italic mt-0.5">
-                                    “{p.descricaoDetalhe}” {p.codDetalhe && <span className="font-mono text-[9px] text-slate-500">[{p.codDetalhe}]</span>}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3.5 text-slate-300 font-medium whitespace-nowrap">
-                                <div className="flex items-center gap-1 text-slate-300">
-                                  <MapPin size={11} className="text-slate-500 inline" />
+
+                              {/* C. CUSTO / OBRA */}
+                              <td className="px-4 py-4 whitespace-normal max-w-[200px]">
+                                <div className="font-semibold text-slate-200 text-sm whitespace-nowrap overflow-hidden text-ellipsis" title={p.obra}>
                                   {p.obra}
                                 </div>
                                 {p.obraId && (
-                                  <div className="text-[10px] text-slate-500 mt-0.5 font-mono">Cód: {p.obraId}</div>
+                                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">Cód: {p.obraId}</div>
                                 )}
                               </td>
-                              <td className="px-4 py-3.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                                <div className="text-slate-300 font-bold">{p.dataPedido}</div>
-                                <div className="text-[10px] text-purple-400/95 font-sans mt-0.5">
-                                  {p.status === 'Entregue' ? (
-                                    <span className="flex items-center gap-1 bg-purple-500/5 px-1.5 py-0.5 rounded border border-purple-500/10">⏱️ Entregue em {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
-                                  ) : p.status === 'Cancelado' ? (
-                                    <span className="flex items-center gap-1 text-slate-500">⏱️ Cancelado</span>
-                                  ) : (
-                                    <span className="flex items-center gap-1 text-amber-500/90 font-medium">⏱️ Ativo há {calculateDaysElapsed(p.dataPedido, p.dataChegada)} dias</span>
-                                  )}
+
+                              {/* FORNECEDOR */}
+                              <td className="px-4 py-4 whitespace-normal max-w-[200px]">
+                                <div className="font-medium text-slate-200 text-sm whitespace-nowrap overflow-hidden text-ellipsis" title={p.fornecedor || 'Não Especificado'}>
+                                  {p.fornecedor || 'Não especificado'}
                                 </div>
+                                {p.codComprador && (
+                                  <div className="text-[10.5px] text-slate-500 mt-0.5">
+                                    Comprador: <span className="font-mono">{p.codComprador}</span>
+                                  </div>
+                                )}
                               </td>
-                              <td className="px-4 py-3.5 text-right font-semibold">
-                                <div>
-                                  <span className="text-slate-300">{p.qtdSolicitada}</span>
-                                  <span className="text-slate-500 mx-1">/</span>
-                                  <span className="text-emerald-400">{p.qtdRecebida}</span>
+
+                              {/* INSUMO SIENGE */}
+                              <td className="px-4 py-4">
+                                <div className="font-bold text-slate-100 text-[14px]">
+                                  {p.insumo}
+                                  {p.descricaoDetalhe ? ` (${p.descricaoDetalhe})` : ''}
                                 </div>
-                                <div className="text-[10px] text-slate-500 mt-1 font-mono">
-                                  Falta: <span className="text-slate-300 font-bold">{p.qtdSolicitada - p.qtdRecebida} {p.unidade}</span>
-                                </div>
-                                <div className="w-20 bg-slate-900 rounded-full h-1 overflow-hidden ml-auto mt-1.5">
-                                  <div
-                                    className={`h-full rounded-full ${
-                                      p.status === 'Entregue' ? 'bg-emerald-500' :
-                                      p.status === 'Parcial' ? 'bg-blue-400' :
-                                      p.status === 'Cancelado' ? 'bg-rose-500' : 'bg-amber-500'
-                                    }`}
-                                    style={{ width: `${Math.min(progressVal, 100)}%` }}
-                                  ></div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3.5">
-                                <span className={`px-2 py-0.5 rounded text-[10px] tracking-wider uppercase font-extrabold inline-block ${
-                                  p.status === 'Entregue' ? 'bg-emerald-500/15 text-emerald-400' :
-                                  p.status === 'Parcial' ? 'bg-blue-500/15 text-blue-400' :
-                                  p.status === 'Cancelado' ? 'bg-rose-500/15 text-rose-400' : 'bg-amber-500/15 text-amber-500'
-                                }`}>
-                                  {p.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3.5 text-right">
-                                <div className="flex gap-2 items-center justify-end">
-                                  {p.status !== 'Entregue' && p.status !== 'Cancelado' && (
+                                <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                                  <span>Unid: <strong className="text-slate-400 uppercase font-mono">{p.unidade}</strong></span>
+                                  {cleanCodeLine && (
                                     <>
-                                      <button
-                                        onClick={() => {
-                                          setPedidos(pedidos.map(item => item.id === p.id && item.codigo === p.codigo ? { ...item, status: 'Cancelado' as const } : item));
-                                          triggerToast(`Pedido ${p.id} cancelado com sucesso.`, 'info');
-                                        }}
-                                        className="px-2 py-1 text-rose-500 hover:text-white hover:bg-rose-955/45 rounded transition-all text-[11px] font-semibold"
-                                        title="Cancelar Pedido"
-                                      >
-                                        Cancelar
-                                      </button>
-                                      <button
-                                        onClick={() => openReceiveModal(p.id, p.codigo || '')}
-                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold transition-colors"
-                                      >
-                                        Dar Entrada
-                                      </button>
+                                      <span className="text-slate-700">•</span>
+                                      <span className="font-mono text-slate-400">Cód: {cleanCodeLine}</span>
                                     </>
                                   )}
+                                  {p.marca && (
+                                    <>
+                                      <span className="text-slate-700">•</span>
+                                      <span className="text-purple-400/90 font-medium">Marca: {p.marca}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
 
-                                  {/* Administrative actions */}
+                              {/* RELAÇÃO RECEBIDA / PEDIDA */}
+                              <td className="px-4 py-4">
+                                <div className="flex flex-col items-center">
+                                  <div className="font-mono font-bold flex items-center gap-1 text-[13px] text-slate-200">
+                                    <span className={p.qtdRecebida === p.qtdSolicitada ? 'text-emerald-400 font-extrabold' : p.qtdRecebida > 0 ? 'text-amber-400 font-extrabold' : 'text-slate-300 font-extrabold'}>
+                                      {p.qtdRecebida}
+                                    </span>
+                                    <span className="text-slate-500">/</span>
+                                    <span>{p.qtdSolicitada}</span>
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold ml-1">{p.unidade}</span>
+                                  </div>
+                                  <div className="w-28 bg-[#0F1115] rounded-full h-1.5 overflow-hidden mt-2">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        p.status === 'Entregue' ? 'bg-emerald-500' :
+                                        p.status === 'Parcial' ? 'bg-amber-500' :
+                                        p.status === 'Cancelado' ? 'bg-rose-500' : 'bg-slate-700'
+                                      }`}
+                                      style={{ width: `${Math.min(progressVal, 100)}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* STATUS LOGÍSTICO */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="flex flex-col items-start gap-1.5">
+                                  <span className={`px-3 py-1 rounded-md text-[11px] tracking-wide font-bold min-w-[145px] text-center inline-block ${
+                                    p.status === 'Entregue' ? 'border border-emerald-555 text-emerald-400 bg-emerald-500/5' :
+                                    p.status === 'Parcial' ? 'border border-amber-555 text-amber-400 bg-amber-500/5' :
+                                    p.status === 'Cancelado' ? 'border border-rose-500/20 text-rose-450 bg-rose-500/5' :
+                                    'border border-slate-700/60 text-slate-300 bg-slate-800/40'
+                                  }`}>
+                                    {p.status === 'Entregue' ? 'Totalmente entregue' :
+                                     p.status === 'Parcial' ? 'Parcialmente entregue' :
+                                     p.status === 'Cancelado' ? 'Cancelado' : 'Pendente'}
+                                  </span>
+                                  
+                                  <select
+                                    value={p.status}
+                                    onChange={(e) => {
+                                      const newStatus = e.target.value as 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado';
+                                      setPedidos(pedidos.map(item => {
+                                        if (item.id === p.id && item.codigo === p.codigo) {
+                                          let updatedRecebida = item.qtdRecebida;
+                                          if (newStatus === 'Entregue') {
+                                            updatedRecebida = item.qtdSolicitada;
+                                          } else if (newStatus === 'Pendente') {
+                                            updatedRecebida = 0;
+                                          }
+                                          return {
+                                            ...item,
+                                            status: newStatus,
+                                            qtdRecebida: updatedRecebida,
+                                            dataChegada: newStatus === 'Entregue' ? (item.dataChegada || new Date().toLocaleDateString('pt-BR')) : undefined
+                                          };
+                                        }
+                                        return item;
+                                      }));
+                                      triggerToast(`Status alterado para ${newStatus}.`, 'success');
+                                    }}
+                                    className="w-full max-w-[145px] bg-[#0F1115] border border-slate-800 text-slate-400 text-[10px] rounded px-2 py-1 focus:border-purple-500 focus:outline-none cursor-pointer"
+                                  >
+                                    <option value="Pendente">Marcar Pendente</option>
+                                    <option value="Parcial">Marcar Parcial</option>
+                                    <option value="Entregue">Marcar Completo</option>
+                                    <option value="Cancelado">Marcar Cancelado</option>
+                                  </select>
+                                </div>
+                              </td>
+
+                              {/* PAINEL DE AÇÕES */}
+                              <td className="px-4 py-4 text-right">
+                                <div className="flex gap-2 items-center justify-end">
+                                  {/* Edit button */}
                                   <button
                                     onClick={() => handleOpenEditPedidoModal(p)}
-                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all"
-                                    title="Editar Especificações"
+                                    className="p-1.5 h-8 w-8 text-slate-400 hover:text-white bg-slate-800/25 hover:bg-slate-800 rounded border border-slate-700/60 inline-flex items-center justify-center transition-all"
+                                    title="Editar Pedido"
                                   >
                                     <Edit size={14} />
                                   </button>
+
+                                  {/* Principal action button */}
+                                  {p.status === 'Entregue' ? (
+                                    <div className="px-3 py-1.5 h-8 bg-slate-900/60 text-slate-500 text-[11px] font-semibold rounded border border-slate-800/80 flex items-center gap-1 cursor-default select-none">
+                                      <Check size={12} className="text-slate-500" />
+                                      Finalizado
+                                    </div>
+                                  ) : p.status === 'Cancelado' ? (
+                                    <div className="px-3 py-1.5 h-8 bg-slate-900/40 text-slate-650 text-[11px] font-semibold rounded border border-slate-900/60 flex items-center gap-1 cursor-default select-none">
+                                      Cancelado
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => openReceiveModal(p.id, p.codigo || '')}
+                                      className="px-3 py-1.5 h-8 bg-[#4F46E5] hover:bg-[#5850EC] text-white rounded text-[11px] font-extrabold tracking-wide transition-all shadow-sm flex items-center justify-center whitespace-nowrap"
+                                    >
+                                      + Dar Entrada
+                                    </button>
+                                  )}
+
+                                  {/* Delete button */}
                                   <button
                                     onClick={() => handleDeletePedido(p.id)}
-                                    className="p-1 text-rose-550/70 hover:text-rose-400 hover:bg-slate-800 rounded transition-all"
-                                    title="Excluir Definitivamente"
+                                    className="p-1.5 h-8 w-8 text-rose-500/70 hover:text-rose-400 bg-rose-955/5 hover:bg-rose-955/20 rounded border border-rose-900/20 inline-flex items-center justify-center transition-all"
+                                    title="Excluir Pedido"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={13} />
                                   </button>
                                 </div>
                               </td>

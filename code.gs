@@ -20,15 +20,18 @@ function setupDatabase() {
   
   // 1. Aba Pedidos
   var sheetPedidos = ss.getSheetByName(SHEET_PEDIDOS);
+  var expectedHeaders = ["ID", "Insumo", "Código", "Obra", "Qtd Solicitada", "Qtd Recebida", "Unidade", "Status", "Data Pedido", "ID da Obra", "Cod Comprador", "Fornecedor", "Cod Detalhe", "Descricao Detalhe", "Marca", "Descricao Unidade", "Qtd Pendente Importada", "Data Chegada"];
   if (!sheetPedidos) {
     sheetPedidos = ss.insertSheet(SHEET_PEDIDOS);
-    sheetPedidos.appendRow(["ID", "Insumo", "Código", "Obra", "Qtd Solicitada", "Qtd Recebida", "Unidade", "Status", "Data Pedido", "ID da Obra"]);
-    sheetPedidos.getRange("A1:J1").setFontWeight("bold").setBackground("#e2e8f0");
+    sheetPedidos.appendRow(expectedHeaders);
+    sheetPedidos.getRange(1, 1, 1, expectedHeaders.length).setFontWeight("bold").setBackground("#e2e8f0");
   } else {
-    // Garante que a coluna J está adicionada para ID da Obra se não existir
+    // Garante que todas as colunas necessárias adicionadas se não existirem
     var headers = sheetPedidos.getDataRange().getValues()[0];
-    if (headers.length < 10) {
-      sheetPedidos.getRange(1, 10).setValue("ID da Obra").setFontWeight("bold").setBackground("#e2e8f0");
+    if (headers.length < expectedHeaders.length) {
+      for (var col = headers.length; col < expectedHeaders.length; col++) {
+        sheetPedidos.getRange(1, col + 1).setValue(expectedHeaders[col]).setFontWeight("bold").setBackground("#e2e8f0");
+      }
     }
   }
   
@@ -285,7 +288,15 @@ function saveOrUpdatePedido(sheet, item) {
     item.unidade,
     item.status,
     item.dataPedido,
-    item.obraId || ""
+    item.obraId || "",
+    item.codComprador || "",
+    item.fornecedor || "",
+    item.codDetalhe || "",
+    item.descricaoDetalhe || "",
+    item.marca || "",
+    item.descricaoUnidade || "",
+    item.qtdPendenteImportada !== undefined && item.qtdPendenteImportada !== null ? Number(item.qtdPendenteImportada) : "",
+    item.dataChegada || ""
   ];
   
   if (rowIdx !== -1) {
@@ -552,8 +563,9 @@ function saveEntireData(ss, payload) {
     var sheetPedidos = ss.getSheetByName(SHEET_PEDIDOS);
     if (sheetPedidos) {
       sheetPedidos.clear();
-      sheetPedidos.appendRow(["ID", "Insumo", "Código", "Obra", "Qtd Solicitada", "Qtd Recebida", "Unidade", "Status", "Data Pedido", "ID da Obra"]);
-      sheetPedidos.getRange("A1:J1").setFontWeight("bold").setBackground("#e2e8f0");
+      var pHeaders = ["ID", "Insumo", "Código", "Obra", "Qtd Solicitada", "Qtd Recebida", "Unidade", "Status", "Data Pedido", "ID da Obra", "Cod Comprador", "Fornecedor", "Cod Detalhe", "Descricao Detalhe", "Marca", "Descricao Unidade", "Qtd Pendente Importada", "Data Chegada"];
+      sheetPedidos.appendRow(pHeaders);
+      sheetPedidos.getRange(1, 1, 1, pHeaders.length).setFontWeight("bold").setBackground("#e2e8f0");
       for (var p = 0; p < payload.pedidos.length; p++) {
         var ped = payload.pedidos[p];
         sheetPedidos.appendRow([
@@ -566,7 +578,15 @@ function saveEntireData(ss, payload) {
           ped.unidade || "",
           ped.status || "Pendente",
           ped.dataPedido || "",
-          ped.obraId || ""
+          ped.obraId || "",
+          ped.codComprador || "",
+          ped.fornecedor || "",
+          ped.codDetalhe || "",
+          ped.descricaoDetalhe || "",
+          ped.marca || "",
+          ped.descricaoUnidade || "",
+          ped.qtdPendenteImportada !== undefined && ped.qtdPendenteImportada !== null ? Number(ped.qtdPendenteImportada) : "",
+          ped.dataChegada || ""
         ]);
       }
     }
