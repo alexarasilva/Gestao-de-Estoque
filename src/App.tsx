@@ -555,6 +555,35 @@ export default function App() {
       return matchObra && matchSearch && matchStatus;
     });
 
+    // Default sorting: Newest first (by date dataPedido or parsed date)
+    const parseDateHelper = (val: any): number => {
+      if (!val) return 0;
+      const str = String(val).trim();
+      const parts = str.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // 0-indexed
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          return new Date(year, month, day).getTime();
+        }
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    };
+
+    list.sort((a, b) => {
+      const timeA = parseDateHelper(a.dataPedido);
+      const timeB = parseDateHelper(b.dataPedido);
+      if (timeA !== timeB) {
+        return timeB - timeA; // Descending (most recent dates first)
+      }
+      // If dates match, sort by numeric part of the ID descending
+      const numA = parseInt(a.id.replace(/[^\d]/g, ''), 10) || 0;
+      const numB = parseInt(b.id.replace(/[^\d]/g, ''), 10) || 0;
+      return numB - numA;
+    });
+
     if (sortConfig.key && sortConfig.direction) {
       list.sort((a, b) => {
         let valA: any = '';
