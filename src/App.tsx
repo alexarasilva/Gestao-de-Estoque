@@ -483,14 +483,15 @@ export default function App() {
   // Derived filtered inventories / orders lists
   const filteredPedidos = useMemo(() => {
     return pedidos.filter((p) => {
-      const matchObra = selectedObra === 'Todas as Obras' || p.obra === selectedObra;
+      const pObra = p.obra || '';
+      const matchObra = selectedObra === 'Todas as Obras' || pObra === selectedObra;
       
       const q = searchQuery.toLowerCase().trim();
       const matchSearch =
-        p.insumo.toLowerCase().includes(q) ||
+        (p.insumo || '').toLowerCase().includes(q) ||
         (p.codigo || '').toLowerCase().includes(q) ||
-        p.id.toLowerCase().includes(q) ||
-        p.obra.toLowerCase().includes(q) ||
+        (p.id || '').toLowerCase().includes(q) ||
+        (pObra).toLowerCase().includes(q) ||
         (p.obraId || '').toLowerCase().includes(q) ||
         (p.fornecedor || '').toLowerCase().includes(q) ||
         (p.codComprador || '').toLowerCase().includes(q) ||
@@ -505,13 +506,14 @@ export default function App() {
 
   const filteredStock = useMemo(() => {
     return stockInventory.filter((item) => {
-      const matchObra = selectedObra === 'Todas as Obras' || item.obra === selectedObra;
+      const itemObra = item.obra || '';
+      const matchObra = selectedObra === 'Todas as Obras' || itemObra === selectedObra;
       
       const q = searchQuery.toLowerCase().trim();
       const matchSearch =
-        item.insumo.toLowerCase().includes(q) ||
+        (item.insumo || '').toLowerCase().includes(q) ||
         (item.codigo || '').toLowerCase().includes(q) ||
-        item.obra.toLowerCase().includes(q) ||
+        (itemObra).toLowerCase().includes(q) ||
         (item.fornecedor || '').toLowerCase().includes(q) ||
         (item.marca || '').toLowerCase().includes(q) ||
         (item.descricaoDetalhe || '').toLowerCase().includes(q);
@@ -779,10 +781,11 @@ export default function App() {
       const exactMatchIndex = updatedList.findIndex(
         (p) => p.id === newItem.id && 
                ((p.codigo && newItem.codigo && p.codigo === newItem.codigo) || 
-                p.insumo.toLowerCase().trim() === newItem.insumo.toLowerCase().trim())
+                (p.insumo || '').toLowerCase().trim() === (newItem.insumo || '').toLowerCase().trim())
       );
       
-      const matchedObra = finalObrasList.find(o => o.nome.toLowerCase().trim() === newItem.obra.toLowerCase().trim());
+      const newItemObraNormalized = (newItem.obra || '').toLowerCase().trim();
+      const matchedObra = finalObrasList.find(o => (o.nome || '').toLowerCase().trim() === newItemObraNormalized);
       const resolvedObraId = matchedObra ? matchedObra.id : newItem.obraId;
       
       if (exactMatchIndex !== -1) {
@@ -846,7 +849,8 @@ export default function App() {
 
     // Map all final items to their resolved or newly built obraId
     const finalMappedList = updatedList.map(item => {
-      const matched = finalObrasList.find(o => o.nome.toLowerCase().trim() === item.obra.toLowerCase().trim());
+      const itemObraNormalized = (item.obra || '').toLowerCase().trim();
+      const matched = finalObrasList.find(o => (o.nome || '').toLowerCase().trim() === itemObraNormalized);
       return {
         ...item,
         obraId: matched ? matched.id : item.obraId
