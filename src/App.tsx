@@ -50,7 +50,10 @@ import {
   Upload,
   RefreshCw,
   AlertCircle,
-  Database
+  Database,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
@@ -108,16 +111,25 @@ export interface Pedido {
   qtdPendenteImportada?: number;
 }
 
-export function calculateDaysElapsed(dataPedidoStr: string, statusText: string, dataChegadaStr?: string): number {
+export function calculateDaysElapsed(dataPedidoStr: any, statusText: string, dataChegadaStr?: any): number {
   if (!dataPedidoStr) return 0;
   
-  const parseDate = (str: string): Date | null => {
+  const parseDate = (val: any): Date | null => {
+    if (!val) return null;
+    if (val instanceof Date) return val;
+    if (typeof val === 'number') {
+      const d = new Date((val - 25569) * 86400 * 1000);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const str = String(val).trim();
     const parts = str.split('/');
     if (parts.length === 3) {
       const day = parseInt(parts[0], 10);
       const month = parseInt(parts[1], 10) - 1; // 0-indexed
       const year = parseInt(parts[2], 10);
-      return new Date(year, month, day);
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
     }
     const d = new Date(str);
     return isNaN(d.getTime()) ? null : d;
@@ -374,13 +386,25 @@ export default function App() {
   // Modal State Variables
   const [selectedPedidoId, setSelectedPedidoId] = useState<string>('');
   const [selectedPedidoCodigo, setSelectedPedidoCodigo] = useState<string>('');
-  const [qtdReceiveInput, setQtdReceiveInput] = useState<number>(0);
+  const [qtdReceiveInput, setQtdReceiveInput] = useState<number | ''>('');
+  const [receiptNotaFiscal, setReceiptNotaFiscal] = useState<string>('');
+  const [receiptResponsavel, setReceiptResponsavel] = useState<string>('');
+  const [receiptStatusAlteracao, setReceiptStatusAlteracao] = useState<string>('deduzir_auto');
 
   // Sienge excel/spreadsheet import state
   const [pedidosViewMode, setPedidosViewMode] = useState<'cards' | 'table'>('table');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Pedido | 'progress' | 'id_numeric' | '';
+    direction: 'asc' | 'desc' | '';
+  }>({
+    key: '',
+    direction: '',
+  });
   const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [parsedImportItems, setParsedImportItems] = useState<Pedido[]>([]);
+  const [importedFileName, setImportedFileName] = useState<string>('');
   const [importStats, setImportStats] = useState<{ newOrders: number; newItems: number; updatedQtds: number } | null>(null);
   
   // New Order Form States
@@ -404,6 +428,34 @@ export default function App() {
     setTimeout(() => {
       setToast({ message: '', type: null });
     }, 4500);
+  };
+
+  const handleSortToggle = (key: keyof Pedido | 'progress' | 'id_numeric') => {
+    let newDirection: 'asc' | 'desc' | '' = 'asc';
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'asc') {
+        newDirection = 'desc';
+      } else {
+        newDirection = '';
+      }
+    }
+    setSortConfig({ key: newDirection ? key : '', direction: newDirection });
+    
+    if (newDirection === '') {
+      triggerToast('Ordenação desativada', 'info');
+    } else {
+      const orderLabel = newDirection === 'asc' ? 'A-Z / Crescente' : 'Z-A / Decrescente';
+      const keyLabels: Record<string, string> = {
+        id_numeric: 'Código',
+        obra: 'Obra / C.C',
+        fornecedor: 'Fornecedor / Comprador',
+        insumo: 'Insumo / Descrição',
+        progress: 'Pedido / Recebido',
+        status: 'Status Logístico'
+      };
+      const label = keyLabels[key] || String(key);
+      triggerToast(`Ordenando por ${label}: ${orderLabel}`, 'success');
+    }
   };
 
 
@@ -482,7 +534,7 @@ export default function App() {
 
   // Derived filtered inventories / orders lists
   const filteredPedidos = useMemo(() => {
-    return pedidos.filter((p) => {
+    const list = pedidos.filter((p) => {
       const pObra = p.obra || '';
       const matchObra = selectedObra === 'Todas as Obras' || pObra === selectedObra;
       
@@ -502,7 +554,46 @@ export default function App() {
       const matchStatus = statusFilter === 'Todos' || p.status === statusFilter;
       return matchObra && matchSearch && matchStatus;
     });
-  }, [pedidos, selectedObra, searchQuery, statusFilter]);
+
+    if (sortConfig.key && sortConfig.direction) {
+      list.sort((a, b) => {
+        let valA: any = '';
+        let valB: any = '';
+
+        if (sortConfig.key === 'progress') {
+          // Progress ratio
+          const progressA = a.qtdSolicitada > 0 ? (a.qtdRecebida / a.qtdSolicitada) : 0;
+          const progressB = b.qtdSolicitada > 0 ? (b.qtdRecebida / b.qtdSolicitada) : 0;
+          valA = progressA;
+          valB = progressB;
+        } else if (sortConfig.key === 'id_numeric') {
+          // Try numerical comparison on code or ID
+          const numA = parseInt(a.id.replace(/[^\d]/g, ''), 10);
+          const numB = parseInt(b.id.replace(/[^\d]/g, ''), 10);
+          valA = isNaN(numA) ? a.id : numA;
+          valB = isNaN(numB) ? b.id : numB;
+        } else {
+          valA = a[sortConfig.key as keyof Pedido];
+          valB = b[sortConfig.key as keyof Pedido];
+        }
+
+        if (valA === undefined || valA === null) valA = '';
+        if (valB === undefined || valB === null) valB = '';
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return sortConfig.direction === 'asc'
+            ? valA.localeCompare(valB, 'pt-BR', { sensitivity: 'base', numeric: true })
+            : valB.localeCompare(valA, 'pt-BR', { sensitivity: 'base', numeric: true });
+        }
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return list;
+  }, [pedidos, selectedObra, searchQuery, statusFilter, sortConfig]);
 
   const filteredStock = useMemo(() => {
     return stockInventory.filter((item) => {
@@ -709,7 +800,10 @@ export default function App() {
       if (ped) {
         setSelectedPedidoId(id);
         setSelectedPedidoCodigo(codigo);
-        setQtdReceiveInput(Number(ped.qtdSolicitada - ped.qtdRecebida));
+        setQtdReceiveInput(''); // Começa não preenchido (vazio) conforme solicitado
+        setReceiptNotaFiscal('');
+        setReceiptResponsavel(currentUser.nome || '');
+        setReceiptStatusAlteracao('deduzir_auto');
         setShowReceiveModal(true);
       }
     });
@@ -718,21 +812,53 @@ export default function App() {
   // Processes delivery check-in
   const handleConfirmReceipt = (e: React.FormEvent) => {
     e.preventDefault();
-    if (qtdReceiveInput <= 0) {
+    if (!receiptResponsavel || !receiptResponsavel.trim()) {
+      triggerToast('O Responsável de Almoxarifado é obrigatório.', 'warn');
+      return;
+    }
+    const inputVal = Number(qtdReceiveInput);
+    if (!qtdReceiveInput || inputVal <= 0) {
       triggerToast('A quantidade recebida deve ser positiva.', 'warn');
       return;
+    }
+
+    const currentPed = pedidos.find(p => p.id === selectedPedidoId && p.codigo === selectedPedidoCodigo);
+    if (currentPed) {
+      const remaining = currentPed.qtdSolicitada - currentPed.qtdRecebida;
+      if (inputVal > remaining) {
+        triggerToast(`A quantidade informada (${inputVal}) não pode exceder o saldo pendente de ${remaining} ${currentPed.unidade.toUpperCase()}`, 'warn');
+        return;
+      }
     }
 
     setPedidos(
       pedidos.map((p) => {
         if (p.id === selectedPedidoId && p.codigo === selectedPedidoCodigo) {
-          const newRec = Number(p.qtdRecebida) + Number(qtdReceiveInput);
-          let newStatus: 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado' = 'Parcial';
-          let dataCheg = p.dataChegada;
-          if (newRec >= p.qtdSolicitada) {
+          const newRec = Number(p.qtdRecebida) + inputVal;
+           let newStatus: 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado' = 'Parcial';
+           let dataCheg = p.dataChegada;
+
+          if (receiptStatusAlteracao === 'entregue') {
             newStatus = 'Entregue';
-            dataCheg = new Date().toLocaleDateString('pt-BR'); // Record arrival date today!
+            dataCheg = new Date().toLocaleDateString('pt-BR');
+          } else if (receiptStatusAlteracao === 'parcial') {
+            newStatus = 'Parcial';
+          } else if (receiptStatusAlteracao === 'pendente') {
+            newStatus = 'Pendente';
+          } else if (receiptStatusAlteracao === 'cancelado') {
+            newStatus = 'Cancelado';
+          } else {
+            // deduzir_auto
+            if (newRec >= p.qtdSolicitada) {
+              newStatus = 'Entregue';
+              dataCheg = new Date().toLocaleDateString('pt-BR'); // Record arrival date today!
+            } else if (newRec > 0) {
+              newStatus = 'Parcial';
+            } else {
+              newStatus = 'Pendente';
+            }
           }
+
           return {
             ...p,
             qtdRecebida: Math.min(newRec, p.qtdSolicitada), // clamp to target
@@ -874,16 +1000,27 @@ export default function App() {
   const parseSiengeSheet = (sheetData: any[][]) => {
     if (sheetData.length <= 1) return [];
     
+    // Normalization helper to strip accents, keep only lowercase alphanumeric and spaces
+    const cleanStr = (val: any): string => {
+      if (!val) return '';
+      return String(val)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // remove accents
+        .replace(/[^a-z0-9 ]/g, '') // strip punctuation & special symbols, keep spaces
+        .trim();
+    };
+
     let headerRowIndex = 0;
     let foundHeader = false;
     
     // Step 1: Let's search for a row containing at least 3 distinct Sienge header keywords
-    for (let r = 0; r < Math.min(15, sheetData.length); r++) {
+    for (let r = 0; r < Math.min(50, sheetData.length); r++) {
       const row = sheetData[r];
-      if (row) {
+      if (row && Array.isArray(row)) {
         let matchCount = 0;
         row.forEach(cell => {
-          const s = String(cell || '').toLowerCase().trim();
+          const s = cleanStr(cell);
           if (
             s.includes('pedido') ||
             s.includes('insumo') ||
@@ -891,11 +1028,9 @@ export default function App() {
             s.includes('fornecedor') ||
             s.includes('comprador') ||
             s.includes('marca') ||
-            s.includes('quantidade') ||
-            s.includes('quant.') ||
+            s.includes('quant') ||
             s.includes('unidade') ||
-            s.includes('emissão') ||
-            s.includes('emissao') ||
+            s.includes('emiss') ||
             s.includes('detalhe')
           ) {
             matchCount++;
@@ -911,11 +1046,11 @@ export default function App() {
     
     // Step 2: Fallback to any row with at least 1 typical match if no robust header row was found
     if (!foundHeader) {
-      for (let r = 0; r < Math.min(10, sheetData.length); r++) {
+      for (let r = 0; r < Math.min(25, sheetData.length); r++) {
         const row = sheetData[r];
-        if (row && row.some(cell => {
-          const s = String(cell || '').toLowerCase();
-          return s.includes('nº pedido') || s.includes('n° pedido') || s.includes('data pedido') || s.includes('descrição insumo');
+        if (row && Array.isArray(row) && row.some(cell => {
+          const s = cleanStr(cell);
+          return s.includes('n pedido') || s.includes('no pedido') || s.includes('data pedido') || s.includes('descricao insumo') || s.includes('desc insumo');
         })) {
           headerRowIndex = r;
           foundHeader = true;
@@ -924,7 +1059,7 @@ export default function App() {
       }
     }
     
-    const headers = sheetData[headerRowIndex].map(h => String(h || '').trim());
+    const headers = sheetData[headerRowIndex].map(h => cleanStr(h));
     
     let colId = -1;
     let colInsumo = -1;
@@ -945,19 +1080,19 @@ export default function App() {
     let colStatusEntrega = -1;
     let colQtdPendente = -1;
     
-    headers.forEach((h, idx) => {
-      const s = h.toLowerCase().trim();
+    headers.forEach((s, idx) => {
+      // s is already cleanStr normalized (lowercased, no accents, no symbols except spaces)
       
-      // 1. Nº Pedido (supporting degree symbol °, ordinal index º, no. abbreviation, and case insensitivity)
-      if (s === 'nº pedido' || s === 'n° pedido' || s === 'npedido' || s === 'n°pedido' || s === 'nºpedido' || s === 'numero pedido' || s === 'número pedido' || s.includes('nº ped') || s.includes('n° ped') || s.includes('num_ped') || s === 'pedido' || s === 'id' || s === 'pc') {
+      // 1. Nº Pedido
+      if (s === 'n pedido' || s === 'no pedido' || s === 'npedido' || s === 'numero pedido' || s.includes('n ped') || s.includes('no ped') || s.includes('numped') || s === 'pedido' || s === 'id' || s === 'pc') {
         colId = idx;
       }
       // 2. Data pedido
-      else if (s === 'data pedido' || s === 'data do pedido' || s === 'data emissao' || s === 'data emissão' || s.includes('data') || s.includes('emissão') || s.includes('emissao') || s === 'dt pedido' || s === 'dt_pedido') {
+      else if (s === 'data pedido' || s === 'data do pedido' || s === 'data emissao' || s.includes('data') || s.includes('emissao') || s === 'dt pedido' || s === 'dtpedido') {
         colData = idx;
       }
       // 3. Cód. Obra
-      else if (s === 'cód. obra' || s === 'cod. obra' || s === 'codigo obra' || s === 'código obra' || (s.includes('obra') && (s.includes('cod') || s.includes('cód')))) {
+      else if (s === 'cod obra' || s === 'codigo obra' || (s.includes('obra') && (s.includes('cod') || s.includes('codigo')))) {
         colCodObra = idx;
       }
       // 4. Obra
@@ -965,7 +1100,7 @@ export default function App() {
         colObra = idx;
       }
       // 5. Cód. Comprador
-      else if (s === 'cód. comprador' || s === 'cod. comprador' || s === 'codigo comprador' || s === 'cod comprador' || s.includes('comprador')) {
+      else if (s === 'cod comprador' || s === 'codigo comprador' || s.includes('comprador')) {
         colCodComprador = idx;
       }
       // 6. Fornecedor
@@ -973,43 +1108,43 @@ export default function App() {
         colFornecedor = idx;
       }
       // 7. Cód. Insumo
-      else if (s === 'cód. insumo' || s === 'cod. insumo' || s === 'codigo insumo' || s === 'código insumo' || s === 'cod_insumo' || s === 'cód insumo' || s === 'insumo código') {
+      else if (s === 'cod insumo' || s === 'codigo insumo' || s === 'codinsumo' || s === 'insumo codigo') {
         colCodigo = idx;
       }
       // 8. Descrição insumo
-      else if (s === 'descrição insumo' || s === 'descricao insumo' || s === 'desc insumo' || s === 'insumo' || s === 'material' || s === 'item' || s === 'produto' || (s.includes('desc') && s.includes('insumo'))) {
+      else if (s === 'descricao insumo' || s === 'desc insumo' || s === 'insumo' || s === 'material' || s === 'item' || s === 'produto' || (s.includes('desc') && s.includes('insumo'))) {
         colInsumo = idx;
       }
       // 9. Cód. Detalhe
-      else if (s === 'cód. detalhe' || s === 'cod. detalhe' || s === 'codigo detalhe' || s === 'cod detalhe' || (s.includes('detalhe') && s.includes('cod'))) {
+      else if (s === 'cod detalhe' || s === 'codigo detalhe' || (s.includes('detalhe') && s.includes('cod'))) {
         colCodDetalhe = idx;
       }
       // 10. Descrição detalhe
-      else if (s === 'descrição detalhe' || s === 'descricao detalhe' || s === 'desc detalhe' || s === 'detalhe' || (s.includes('desc') && s.includes('detalhe'))) {
+      else if (s === 'descricao detalhe' || s === 'desc detalhe' || s === 'detalhe' || (s.includes('desc') && s.includes('detalhe'))) {
         colDescDetalhe = idx;
       }
       // 11. Descrição marca
-      else if (s === 'descrição marca' || s === 'descricao marca' || s === 'desc marca' || s === 'marca' || s.includes('marca')) {
+      else if (s === 'descricao marca' || s === 'desc marca' || s === 'marca' || s.includes('marca')) {
         colMarca = idx;
       }
       // 12. Símbolo unidade medida
-      else if (s === 'símbolo unidade medida' || s === 'simbolo unidade medida' || s === 'simbolo unidade' || s === 'simb unidade' || s === 'unid' || s === 'un' || s === 'unidade' || s === 'um') {
+      else if (s === 'simbolo unidade medida' || s === 'simbolo unidade' || s === 'simb unidade' || s === 'unid' || s === 'un' || s === 'unidade' || s === 'um') {
         colUnidade = idx;
       }
       // 13. Descrição unidade medida
-      else if (s === 'descrição unidade medida' || s === 'descricao unidade medida' || (s.includes('desc') && s.includes('unidade'))) {
+      else if (s === 'descricao unidade medida' || (s.includes('desc') && s.includes('unidade'))) {
         colDescUnidade = idx;
       }
       // 14. Status entrega
-      else if (s === 'status entrega' || s === 'status_entrega' || s === 'status do pedido' || s === 'status' || (s.includes('status') && s.includes('entrega'))) {
+      else if (s === 'status entrega' || s === 'statusentrega' || s === 'status do pedido' || s === 'status' || s.includes('status')) {
         colStatusEntrega = idx;
       }
       // 15. Quant. pendente
-      else if (s === 'quant. pendente' || s === 'quantidade pendente' || s === 'qtd pendente' || s === 'saldo pendente' || s === 'pendente' || s.includes('pendente')) {
+      else if (s === 'quant pendente' || s === 'quantidade pendente' || s === 'qtd pendente' || s === 'saldo pendente' || s === 'pendente' || s.includes('pendente')) {
         colQtdPendente = idx;
       }
       // Quantidade comprada / solicitada fallback
-      else if (s === 'quant. solicitada' || s === 'quantidade solicitada' || s === 'qtd solicitada' || s === 'quantidade comprada' || s === 'qtd comprada' || s === 'quantidade' || s === 'qtd' || s === 'volume') {
+      else if (s === 'quant solicitada' || s === 'quantidade solicitada' || s === 'qtd solicitada' || s === 'quantidade comprada' || s === 'qtd comprada' || s === 'quantidade' || s === 'qtd' || s === 'volume') {
         colQtd = idx;
       }
     });
@@ -1171,32 +1306,103 @@ export default function App() {
     return results;
   };
 
+  const preprocessSemicolonCsv = (rows: any[][]): any[][] => {
+    if (!rows || rows.length === 0) return [];
+    
+    // Check if rows are single-column and contain semicolons or commas
+    const testRows = rows.filter(r => r && r.length > 0).slice(0, 8);
+    const hasSemicolon = testRows.some(r => r.length === 1 && String(r[0]).includes(';'));
+    const hasComma = !hasSemicolon && testRows.some(r => r.length === 1 && String(r[0]).includes(','));
+    
+    if (hasSemicolon) {
+      return rows.map(row => {
+        if (row && row.length === 1) {
+          const line = String(row[0]);
+          return line.split(';').map(cell => cell.replace(/^["']|["']$/g, '').trim());
+        }
+        return row;
+      });
+    } else if (hasComma) {
+      return rows.map(row => {
+        if (row && row.length === 1) {
+          const line = String(row[0]);
+          return line.split(',').map(cell => cell.replace(/^["']|["']$/g, '').trim());
+        }
+        return row;
+      });
+    }
+    return rows;
+  };
+
+  const processParsedData = (jsonData: any[][]) => {
+    const parsed = parseSiengeSheet(jsonData);
+    if (parsed.length === 0) {
+      triggerToast('Nenhum item válido foi encontrado na planilha Sienge. Verifique as colunas.', 'warn');
+    } else {
+      setParsedImportItems(parsed);
+      triggerToast(`${parsed.length} itens detectados e prontos para sincronização!`, 'success');
+    }
+  };
+
   const handleUploadSienge = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    setImportedFileName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-        
-        const parsed = parseSiengeSheet(jsonData);
-        if (parsed.length === 0) {
-          triggerToast('Nenhum item válido foi encontrado na planilha Sienge.', 'warn');
-        } else {
-          setParsedImportItems(parsed);
-          triggerToast(`${parsed.length} itens detectados e prontos para verificação!`, 'success');
+    if (file.name.endsWith('.csv')) {
+      const csvReader = new FileReader();
+      csvReader.onload = (csvEvent) => {
+        try {
+          const text = csvEvent.target?.result as string;
+          // read as string directly
+          const wb = XLSX.read(text, { type: 'string' });
+          const firstSheet = wb.SheetNames[0];
+          const ws = wb.Sheets[firstSheet];
+          let rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+          rows = preprocessSemicolonCsv(rows);
+          processParsedData(rows);
+        } catch (err) {
+          console.error("String CSV parsing failed, fallback to array buffer: ", err);
+          // Fallback to array buffer but using ISO-8859-1 conversion check or similar
+          const fallbackReader = new FileReader();
+          fallbackReader.onload = (fEvent) => {
+            try {
+              const data = new Uint8Array(fEvent.target?.result as ArrayBuffer);
+              const wb = XLSX.read(data, { type: 'array' });
+              const firstSheet = wb.SheetNames[0];
+              const ws = wb.Sheets[firstSheet];
+              let rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+              rows = preprocessSemicolonCsv(rows);
+              processParsedData(rows);
+            } catch (innerErr) {
+              console.error(innerErr);
+              triggerToast('Erro ao ler arquivo CSV de salvamento.', 'warn');
+            }
+          };
+          fallbackReader.readAsArrayBuffer(file);
         }
-      } catch (err: any) {
-        console.error(err);
-        triggerToast('Houve um erro ao ler o arquivo Excel. Verifique o formato.', 'warn');
-      }
-    };
-    reader.readAsArrayBuffer(file);
+      };
+      // Sienge exports in Portuguese locales are famously coded in Windows-1252 / ISO-8859-1
+      csvReader.readAsText(file, 'ISO-8859-1');
+    } else {
+      // Excel workbook binary reading
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          processParsedData(jsonData);
+        } catch (err: any) {
+          console.error(err);
+          triggerToast('Erro ao ler arquivo Excel. Verifique a formato.', 'warn');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   const handleLoadDemoSienge = () => {
@@ -1709,119 +1915,186 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
       )}
 
       {/* Sidebar Navigation */}
-      <aside id="sidebar-panel" className="w-[260px] bg-[#161920] border-r border-slate-800 flex flex-col justify-between shrink-0">
-        <div className="p-6">
+      <aside id="sidebar-panel" className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-[260px]'} bg-[#161920] border-r border-slate-800 flex flex-col justify-between shrink-0`}>
+        <div className={isSidebarCollapsed ? 'p-3' : 'p-6'}>
           {/* Logo / Branding */}
-          <div className="flex items-center gap-2.5 mb-6">
-            <LogoIcon className="w-9 h-9 shadow-lg shadow-yellow-500/10" />
-            <div>
-              <h1 className="text-base font-sans font-black tracking-tight text-white uppercase leading-none">Gestão de <span className="text-[#FFC800]">Estoque</span></h1>
-              <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Controle local</p>
+          {!isSidebarCollapsed ? (
+            <div className="flex items-center justify-between gap-2.5 mb-6">
+              <div className="flex items-center gap-2.5">
+                <LogoIcon className="w-9 h-9 shadow-lg shadow-yellow-500/10 shrink-0" />
+                <div>
+                  <h1 className="text-base font-sans font-black tracking-tight text-white uppercase leading-none">Gestão de <span className="text-[#FFC800]">Estoque</span></h1>
+                  <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase font-bold">ABSOLUTA CONSTRUTORA</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsSidebarCollapsed(true)}
+                className="p-1.5 rounded bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors shrink-0"
+                title="Recolher menu"
+              >
+                <ChevronLeft size={16} />
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <LogoIcon className="w-9 h-9 shadow-lg shadow-yellow-500/10" />
+              <button 
+                type="button" 
+                onClick={() => setIsSidebarCollapsed(false)}
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-emerald-650 text-slate-300 hover:text-white border border-slate-705 transition-all shadow-md active:scale-95"
+                title="Expandir menu"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
 
           {/* User Simulator Switcher Box */}
-          <div className="mb-6 p-3 bg-[#0F1115] border border-slate-800 rounded-lg">
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                <Shield size={10} className="text-yellow-500" />
-                Operando Como:
-              </span>
-              <span className={`text-[9px] font-bold uppercase px-1 rounded ${
-                currentUser.role === 'Administrador' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
-              }`}>
-                {currentUser.role}
-              </span>
+          {!isSidebarCollapsed ? (
+            <div className="mb-6 p-3 bg-[#0F1115] border border-slate-800 rounded-lg">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                  <Shield size={10} className="text-yellow-500" />
+                  Operando Como:
+                </span>
+                <span className={`text-[9px] font-bold uppercase px-1 rounded ${
+                  currentUser.role === 'Administrador' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+                }`}>
+                  {currentUser.role}
+                </span>
+              </div>
+              
+              <div className="relative">
+                <select
+                  value={currentUser.id}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const matchedUser = usuarios.find(u => u.id === selectedId);
+                    if (matchedUser) {
+                      handleSwitchSimulatorUser(matchedUser);
+                    }
+                  }}
+                  className="w-full bg-[#161920] border border-slate-700 text-xs text-white rounded p-1.5 focus:outline-none focus:border-yellow-500 font-medium cursor-pointer"
+                >
+                  {usuarios.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome} ({u.role === 'Administrador' ? 'Admin' : 'Colaborador'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-[9px] text-slate-500 mt-1.5 leading-tight italic">
+                Altere o perfil para testar as travas de ações e as permissões de acesso.
+              </p>
             </div>
-            
-            <div className="relative">
-              <select
-                value={currentUser.id}
-                onChange={(e) => {
-                  const selectedId = e.target.value;
-                  const matchedUser = usuarios.find(u => u.id === selectedId);
-                  if (matchedUser) {
-                    handleSwitchSimulatorUser(matchedUser);
-                  }
-                }}
-                className="w-full bg-[#161920] border border-slate-700 text-xs text-white rounded p-1.5 focus:outline-none focus:border-yellow-500 font-medium cursor-pointer"
-              >
-                {usuarios.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.nome} ({u.role === 'Administrador' ? 'Admin' : 'Colaborador'})
-                  </option>
-                ))}
-              </select>
+          ) : (
+            <div className="mb-6 flex justify-center">
+              <div className="relative group/user">
+                <div 
+                  className={`w-9 h-9 rounded-full border flex items-center justify-center cursor-pointer transition-all ${
+                    currentUser.role === 'Administrador' ? 'bg-purple-950/40 border-purple-500/30 text-purple-400' : 'bg-blue-950/40 border-blue-500/30 text-blue-400'
+                  }`}
+                  title={`Operando Como: ${currentUser.nome} (${currentUser.role})`}
+                >
+                  <Shield size={14} />
+                </div>
+                <div className="invisible group-hover/user:visible absolute left-12 top-0 z-50 bg-[#161920] border border-slate-800 p-2.5 rounded-lg shadow-xl w-48 transition-all">
+                  <p className="text-[9px] text-slate-500 font-mono uppercase mb-1.5">Perfil rápido:</p>
+                  <select
+                    value={currentUser.id}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const matchedUser = usuarios.find(u => u.id === selectedId);
+                      if (matchedUser) {
+                        handleSwitchSimulatorUser(matchedUser);
+                      }
+                    }}
+                    className="w-full bg-[#0F1115] border border-slate-700 text-xs text-white rounded p-1"
+                  >
+                    {usuarios.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-            <p className="text-[9px] text-slate-500 mt-1.5 leading-tight italic">
-              Altere o perfil para testar as travas de ações e as permissões de acesso.
-            </p>
-          </div>
+          )}
 
           {/* Navigation Links */}
-          <nav className="space-y-1.5" id="navigation-root">
+          <nav className="space-y-1.5 w-full" id="navigation-root">
             <button
               id="nav-tab-painel"
               onClick={() => setCurrentTab('painel')}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-4 py-2.5'} rounded-md text-sm font-medium transition-all ${
                 currentTab === 'painel'
                   ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
+              title="Painel Geral"
             >
               <span className="flex items-center gap-3">
-                <LayoutDashboard size={18} />
-                Painel Geral
+                <LayoutDashboard size={18} className="shrink-0" />
+                {!isSidebarCollapsed && <span>Painel Geral</span>}
               </span>
-              {currentTab === 'painel' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {!isSidebarCollapsed && currentTab === 'painel' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {isSidebarCollapsed && currentTab === 'painel' && <span className="absolute left-1 w-1 h-6 bg-emerald-400 rounded-r-md"></span>}
             </button>
 
             <button
               id="nav-tab-pedidos"
               onClick={() => setCurrentTab('pedidos')}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-4 py-2.5'} rounded-md text-sm font-medium transition-all ${
                 currentTab === 'pedidos'
                   ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
+              title="Pedidos de Compra"
             >
               <span className="flex items-center gap-3">
-                <ClipboardList size={18} />
-                Pedidos de Compra
+                <ClipboardList size={18} className="shrink-0" />
+                {!isSidebarCollapsed && <span>Pedidos de Compra</span>}
               </span>
-              {currentTab === 'pedidos' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {!isSidebarCollapsed && currentTab === 'pedidos' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {isSidebarCollapsed && currentTab === 'pedidos' && <span className="absolute left-1 w-1 h-6 bg-emerald-400 rounded-r-md"></span>}
             </button>
 
             <button
               id="nav-tab-estoque"
               onClick={() => setCurrentTab('estoque')}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-4 py-2.5'} rounded-md text-sm font-medium transition-all ${
                 currentTab === 'estoque'
                   ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
+              title="Estoque por Obra"
             >
               <span className="flex items-center gap-3">
-                <BaggageClaim size={18} />
-                Estoque por Obra
+                <BaggageClaim size={18} className="shrink-0" />
+                {!isSidebarCollapsed && <span>Estoque por Obra</span>}
               </span>
-              {currentTab === 'estoque' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {!isSidebarCollapsed && currentTab === 'estoque' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {isSidebarCollapsed && currentTab === 'estoque' && <span className="absolute left-1 w-1 h-6 bg-emerald-400 rounded-r-md"></span>}
             </button>
 
             <button
               id="nav-tab-relatorios"
               onClick={() => setCurrentTab('relatorios')}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-4 py-2.5'} rounded-md text-sm font-medium transition-all ${
                 currentTab === 'relatorios'
                   ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
+              title="Relatórios e Baixas"
             >
               <span className="flex items-center gap-3">
-                <BarChart3 size={18} />
-                Relatórios e Baixas
+                <BarChart3 size={18} className="shrink-0" />
+                {!isSidebarCollapsed && <span>Relatórios e Baixas</span>}
               </span>
-              {currentTab === 'relatorios' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {!isSidebarCollapsed && currentTab === 'relatorios' && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>}
+              {isSidebarCollapsed && currentTab === 'relatorios' && <span className="absolute left-1 w-1 h-6 bg-emerald-400 rounded-r-md"></span>}
             </button>
 
             <button
@@ -1831,35 +2104,42 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   setCurrentTab('admin');
                 });
               }}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-4 py-2.5'} rounded-md text-sm font-medium transition-all ${
                 currentTab === 'admin'
                   ? 'bg-purple-600/10 text-purple-400 border border-purple-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
+              title="Administração"
             >
               <span className="flex items-center gap-3">
-                <Shield size={18} className={currentUser.role === 'Administrador' ? 'text-purple-400' : 'text-slate-500'} />
-                Administração
+                <Shield size={18} className={`shrink-0 ${currentUser.role === 'Administrador' ? 'text-purple-400' : 'text-slate-500'}`} />
+                {!isSidebarCollapsed && <span>Administração</span>}
               </span>
-              {currentUser.role !== 'Administrador' ? (
-                <Lock size={12} className="text-slate-500" />
-              ) : currentTab === 'admin' ? (
-                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-              ) : null}
+              {!isSidebarCollapsed ? (
+                currentUser.role !== 'Administrador' ? (
+                  <Lock size={12} className="text-slate-500 shrink-0" />
+                ) : currentTab === 'admin' ? (
+                  <span className="w-1.5 h-1.5 bg-purple-400 rounded-full shrink-0"></span>
+                ) : null
+              ) : (
+                currentTab === 'admin' && <span className="absolute left-1 w-1 h-6 bg-purple-400 rounded-r-md"></span>
+              )}
             </button>
           </nav>
         </div>
 
         {/* User profile / Footer */}
-        <div id="sidebar-footer" className="p-5 border-t border-slate-800 bg-[#12151B]">
+        <div id="sidebar-footer" className={`border-t border-slate-800 bg-[#12151B] transition-all duration-300 ${isSidebarCollapsed ? 'p-3 flex justify-center' : 'p-5'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-yellow-500 uppercase">
+            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-yellow-500 uppercase shrink-0" title={currentUser.nome}>
               {currentUser.nome.substring(0, 2)}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{currentUser.nome}</p>
-              <p className="text-[10px] text-slate-500 truncate">{currentUser.login}</p>
-            </div>
+            {!isSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{currentUser.nome}</p>
+                <p className="text-[10px] text-slate-500 truncate">{currentUser.login}</p>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -1955,7 +2235,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="bg-[#161920] border border-slate-800 p-5 rounded-xl flex justify-between items-center relative overflow-hidden group hover:border-slate-700/55 transition-all">
                   <div>
                     <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Pedidos Pendentes</p>
-                    <p className="text-3xl font-serif text-amber-500 transition-all font-semibold" id="stat-pedidos-pendentes">{stats.pendentes}</p>
+                    <p className="text-3xl md:text-3xl lg:text-4xl font-sans font-bold text-amber-500 transition-all tracking-tight" id="stat-pedidos-pendentes">{stats.pendentes}</p>
                     <span className="text-[10px] text-slate-500 mt-1 block">Aguardando transporte</span>
                   </div>
                   <div className="p-3 bg-amber-500/5 text-amber-500 rounded-lg group-hover:scale-105 transition-all">
@@ -1967,7 +2247,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="bg-[#161920] border border-slate-800 p-5 rounded-xl flex justify-between items-center relative overflow-hidden group hover:border-slate-700/55 transition-all">
                   <div>
                     <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Entregas Parciais</p>
-                    <p className="text-3xl font-serif text-blue-400 font-semibold" id="stat-pedidos-parciais">{stats.parciais}</p>
+                    <p className="text-3xl md:text-3xl lg:text-4xl font-sans font-bold text-blue-400 tracking-tight" id="stat-pedidos-parciais">{stats.parciais}</p>
                     <span className="text-[10px] text-slate-500 mt-1 block">Recebidos em partes</span>
                   </div>
                   <div className="p-3 bg-blue-500/5 text-blue-400 rounded-lg group-hover:scale-105 transition-all">
@@ -1979,7 +2259,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="bg-[#161920] border border-slate-800 p-5 rounded-xl flex justify-between items-center relative overflow-hidden group hover:border-slate-700/55 transition-all">
                   <div>
                     <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Alerta: Estoque Crítico</p>
-                    <p className="text-3xl font-serif text-rose-500 font-semibold" id="stat-estoque-critico">{stats.estoqueCritico}</p>
+                    <p className="text-3xl md:text-3xl lg:text-4xl font-sans font-bold text-rose-500 tracking-tight" id="stat-estoque-critico">{stats.estoqueCritico}</p>
                     <span className="text-[10px] text-rose-500/70 mt-1 block">Estoque local no limite</span>
                   </div>
                   <div className="p-3 bg-rose-500/5 text-rose-500 rounded-lg group-hover:scale-105 transition-all animate-pulse">
@@ -1991,7 +2271,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="bg-[#161920] border border-slate-800 p-5 rounded-xl flex justify-between items-center relative overflow-hidden group hover:border-slate-700/55 transition-all">
                   <div>
                     <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Movimentações Hoje</p>
-                    <p className="text-3xl font-serif text-emerald-400 font-semibold" id="stat-movimentos-hoje">{movementsCount}</p>
+                    <p className="text-3xl md:text-3xl lg:text-4xl font-sans font-bold text-emerald-400 tracking-tight" id="stat-movimentos-hoje">{movementsCount}</p>
                     <span className="text-[10px] text-slate-500 mt-1 block">Atividades registradas</span>
                   </div>
                   <div className="p-3 bg-emerald-50/5 text-emerald-400 rounded-lg group-hover:scale-105 transition-all">
@@ -2190,6 +2470,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   <button
                     onClick={() => {
                       setParsedImportItems([]);
+                      setImportedFileName('');
                       setImportStats(null);
                       setShowImportModal(true);
                     }}
@@ -2217,23 +2498,23 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               <div className="bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col md:flex-row justify-around gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-800">
                 <div className="flex-1 pb-4 md:pb-0 md:pr-4 text-center">
                   <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">Total Solicitados</p>
-                  <p className="text-2xl font-serif text-white">{pedidos.length} Pedidos</p>
+                  <p className="text-2xl font-sans font-bold text-white tracking-tight">{pedidos.length} Pedidos</p>
                 </div>
                 <div className="flex-1 py-4 md:py-0 md:px-4 text-center">
                   <p className="text-[11px] text-amber-400 uppercase font-bold tracking-wider mb-1">Pendentes de Entrega</p>
-                  <p className="text-2xl font-serif text-amber-500 font-semibold">
+                  <p className="text-2xl font-sans font-bold text-amber-500 tracking-tight">
                     {pedidos.filter(p => p.status === 'Pendente').length} Pedidos
                   </p>
                 </div>
                 <div className="flex-1 py-4 md:py-0 md:px-4 text-center">
                   <p className="text-[11px] text-blue-400 uppercase font-bold tracking-wider mb-1">Entregas Parciais</p>
-                  <p className="text-2xl font-serif text-blue-400 font-semibold">
+                  <p className="text-2xl font-sans font-bold text-blue-400 tracking-tight">
                     {pedidos.filter(p => p.status === 'Parcial').length} Pedidos
                   </p>
                 </div>
                 <div className="flex-1 pt-4 md:pt-0 md:pl-4 text-center">
                   <p className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider mb-1 font-semibold">Entregue Totalmente</p>
-                  <p className="text-2xl font-serif text-emerald-400 font-semibold">
+                  <p className="text-2xl font-sans font-bold text-emerald-400 tracking-tight">
                     {pedidos.filter(p => p.status === 'Entregue').length} Pedidos
                   </p>
                 </div>
@@ -2298,15 +2579,143 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               {pedidosViewMode === 'table' ? (
                 <div className="overflow-x-auto border border-slate-800 rounded-xl bg-[#161920]">
                   <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                    <thead className="bg-[#1C2028] text-slate-450 text-[11px] uppercase font-mono tracking-wider border-b border-slate-800">
+                    <thead className="bg-[#1C2028] text-slate-400 text-[10.5px] uppercase font-mono tracking-wider border-b border-slate-800">
                       <tr>
-                        <th className="px-4 py-3.5">Código / Emissão</th>
-                        <th className="px-4 py-3.5">C. Custo / Obra</th>
-                        <th className="px-4 py-3.5">Fornecedor</th>
-                        <th className="px-4 py-3.5">Insumo Sienge</th>
-                        <th className="px-4 py-3.5 text-center">Relação Recebida / Pedida</th>
-                        <th className="px-4 py-3.5">Status Logístico</th>
-                        <th className="px-4 py-3.5 text-right">Painel de Ações</th>
+                        {/* CÓDIGO / EMISSÃO */}
+                        <th 
+                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleSortToggle('id_numeric')}
+                          title="Clique para ordenar por Código de Pedido"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Código / Emissão</span>
+                            <span className="inline-flex shrink-0">
+                              {sortConfig.key === 'id_numeric' ? (
+                                sortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* C. CUSTO / OBRA */}
+                        <th 
+                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleSortToggle('obra')}
+                          title="Clique para ordenar por Obra"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Obra / C.C</span>
+                            <span className="inline-flex shrink-0">
+                              {sortConfig.key === 'obra' ? (
+                                sortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* FORNECEDOR */}
+                        <th 
+                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleSortToggle('fornecedor')}
+                          title="Clique para ordenar por Fornecedor"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Fornecedor / Comprador</span>
+                            <span className="inline-flex shrink-0">
+                              {sortConfig.key === 'fornecedor' ? (
+                                sortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* INSUMO SIENGE */}
+                        <th 
+                          className="px-4 py-3.5 min-w-[160px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleSortToggle('insumo')}
+                          title="Clique para ordenar por Insumo"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Insumo / Descrição</span>
+                            <span className="inline-flex shrink-0">
+                              {sortConfig.key === 'insumo' ? (
+                                sortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* PEDIDO / RECEBIDO */}
+                        <th 
+                          className="px-4 py-3.5 min-w-[150px] border-r border-slate-855 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleSortToggle('progress')}
+                          title="Clique para ordenar por Quantidade Pedida / Recebida"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Pedido / Recebido</span>
+                            <span className="inline-flex shrink-0 font-sans normal-case">
+                              {sortConfig.key === 'progress' ? (
+                                sortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* STATUS LOGÍSTICO */}
+                        <th 
+                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleSortToggle('status')}
+                          title="Clique para ordenar por Status Logístico"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Status Logístico</span>
+                            <span className="inline-flex shrink-0">
+                              {sortConfig.key === 'status' ? (
+                                sortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        <th className="px-4 py-3.5 text-right text-[10.5px] uppercase font-bold tracking-wider text-slate-450 select-none">
+                          <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider block">Painel de Ações</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-[#161920]">
@@ -2319,10 +2728,12 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                         </tr>
                       ) : (
                         filteredPedidos.map((p) => {
-                          const progressVal = Math.round((p.qtdRecebida / p.qtdSolicitada) * 100);
+                          const progressVal = p.qtdSolicitada && p.qtdSolicitada > 0 ? Math.round((p.qtdRecebida / p.qtdSolicitada) * 100) : 0;
                           const cleanCodeLine = (() => {
-                            const codInsuNum = p.codigo ? p.codigo.replace(/[^\d]/g, '') : '';
-                            const codDetNum = p.codDetalhe ? p.codDetalhe.replace(/[^\d]/g, '') : '';
+                            const codInsuStr = p.codigo !== undefined && p.codigo !== null ? String(p.codigo) : '';
+                            const codDetStr = p.codDetalhe !== undefined && p.codDetalhe !== null ? String(p.codDetalhe) : '';
+                            const codInsuNum = codInsuStr ? codInsuStr.replace(/[^\d]/g, '') : '';
+                            const codDetNum = codDetStr ? codDetStr.replace(/[^\d]/g, '') : '';
                             return [codInsuNum, codDetNum].filter(Boolean).join(' / ');
                           })();
                           return (
@@ -2359,8 +2770,12 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               <td className="px-4 py-4">
                                 <div className="font-bold text-slate-100 text-[14px]">
                                   {p.insumo}
-                                  {p.descricaoDetalhe ? ` (${p.descricaoDetalhe})` : ''}
                                 </div>
+                                {p.descricaoDetalhe && (
+                                  <div className="text-slate-400 text-xs mt-0.5 italic leading-tight">
+                                    {p.descricaoDetalhe}
+                                  </div>
+                                )}
                                 <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
                                   <span>Unid: <strong className="text-slate-400 uppercase font-mono">{p.unidade}</strong></span>
                                   {cleanCodeLine && (
@@ -2378,15 +2793,15 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                 </div>
                               </td>
 
-                              {/* RELAÇÃO RECEBIDA / PEDIDA */}
+                              {/* PEDIDO / RECEBIDO */}
                               <td className="px-4 py-4">
                                 <div className="flex flex-col items-center">
                                   <div className="font-mono font-bold flex items-center gap-1 text-[13px] text-slate-200">
+                                    <span>{p.qtdSolicitada}</span>
+                                    <span className="text-slate-500">/</span>
                                     <span className={p.qtdRecebida === p.qtdSolicitada ? 'text-emerald-400 font-extrabold' : p.qtdRecebida > 0 ? 'text-amber-400 font-extrabold' : 'text-slate-300 font-extrabold'}>
                                       {p.qtdRecebida}
                                     </span>
-                                    <span className="text-slate-500">/</span>
-                                    <span>{p.qtdSolicitada}</span>
                                     <span className="text-[10px] text-slate-400 uppercase font-bold ml-1">{p.unidade}</span>
                                   </div>
                                   <div className="w-28 bg-[#0F1115] rounded-full h-1.5 overflow-hidden mt-2">
@@ -2484,7 +2899,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                       onClick={() => openReceiveModal(p.id, p.codigo || '')}
                                       className="px-3 py-1.5 h-8 bg-[#4F46E5] hover:bg-[#5850EC] text-white rounded text-[11px] font-extrabold tracking-wide transition-all shadow-sm flex items-center justify-center whitespace-nowrap"
                                     >
-                                      + Dar Entrada
+                                      RECEBIMENTO
                                     </button>
                                   )}
 
@@ -2514,7 +2929,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                     </div>
                   ) : (
                     filteredPedidos.map((p) => {
-                      const progressVal = Math.round((p.qtdRecebida / p.qtdSolicitada) * 100);
+                      const progressVal = p.qtdSolicitada && p.qtdSolicitada > 0 ? Math.round((p.qtdRecebida / p.qtdSolicitada) * 100) : 0;
                       return (
                         <div key={`${p.id}-${p.codigo}`} className="bg-[#161920] border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between">
                           
@@ -2605,7 +3020,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                       onClick={() => openReceiveModal(p.id, p.codigo || '')}
                                       className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold transition-colors"
                                     >
-                                      Dar Entrada
+                                      RECEBIMENTO
                                     </button>
                                   </>
                                 )}
@@ -3406,14 +3821,58 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   type="file"
                   accept=".xlsx, .xls, .csv"
                   onChange={handleUploadSienge}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
                 />
-                <Upload className="text-slate-500 w-8 h-8" />
-                <div className="text-center">
-                  <span className="text-xs text-slate-300 font-semibold block">Escolher Planilha de Compras Sienge</span>
-                  <span className="text-[10px] text-slate-500 block mt-0.5">Arraste para cá ou clique para explorar seu computador</span>
-                </div>
+                {parsedImportItems.length > 0 ? (
+                  <div className="flex flex-col items-center gap-2 z-10 text-center">
+                    <CheckCircle className="text-emerald-500 w-10 h-10 animate-bounce" />
+                    <div>
+                      <span className="text-xs text-emerald-400 font-bold block">✓ Arquivo Carregado com Sucesso!</span>
+                      {importedFileName && (
+                        <span className="text-[11px] text-slate-350 font-mono inline-block mt-1.5 bg-slate-800/80 px-2.5 py-1 rounded border border-slate-700">
+                          📄 {importedFileName}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-500 block mt-1">
+                        Sugerindo <strong className="text-white">{parsedImportItems.length} itens</strong> para importar/sincronizar.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="text-slate-500 w-8 h-8 pointer-events-none" />
+                    <div className="text-center pointer-events-none">
+                      <span className="text-xs text-slate-300 font-semibold block">Escolher Planilha de Compras Sienge</span>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">Arraste para cá ou clique para explorar seu computador</span>
+                    </div>
+                  </>
+                )}
               </div>
+
+              {/* Botão de Enviar Requisitado diretamente após Anexar */}
+              {parsedImportItems.length > 0 && (
+                <div className="p-4 bg-emerald-950/25 border border-emerald-500/30 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-200">
+                  <div className="space-y-1 text-center md:text-left">
+                    <h4 className="text-xs font-bold text-emerald-400 flex items-center justify-center md:justify-start gap-1">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Pronto para Processar!
+                    </h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      Sincronize novas ordens e recalcule as quantidades e saldos sem alterar as entradas físicas já registradas.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      processImportedPedidos(parsedImportItems);
+                      setShowImportModal(false);
+                    }}
+                    className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
+                  >
+                    <CheckCircle size={14} />
+                    Sincronizar e Enviar Agora
+                  </button>
+                </div>
+              )}
 
               {/* Box 3: Table Preview of Parsed Items */}
               {parsedImportItems.length > 0 && (
@@ -3751,81 +4210,208 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
       {/* MODAL 3: INTEGRAR ENTRADA RECEBIDA (RECEIVE DELIVERED CONSIGNMENT) */}
       {showReceiveModal && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="receive-entry-modal">
-          <div className="bg-[#161920] border border-slate-700 w-full max-w-sm rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-[#161920] border border-slate-700 w-full max-w-xl rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
-            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Confirmar Entrada Física</h3>
-                <span className="text-xs text-slate-500 mt-0.5">Lote recebido por transportadora</span>
-              </div>
-              <button
-                onClick={() => setShowReceiveModal(false)}
-                className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded transition-all"
-              >
-                <X size={18} />
-              </button>
-            </div>
+            {(() => {
+              const currPed = pedidos.find(p => p.id === selectedPedidoId && p.codigo === selectedPedidoCodigo);
+              if (!currPed) return null;
 
-            <form onSubmit={handleConfirmReceipt} className="p-6 space-y-4">
-              
-              {/* Detailed Context */}
-              <div className="bg-[#0F1115] p-3.5 rounded-lg border border-slate-800 text-xs">
-                {(() => {
-                  const currPed = pedidos.find(p => p.id === selectedPedidoId);
-                  if (!currPed) return null;
-                  return (
-                    <div className="space-y-1.5">
-                      <div className="text-slate-500">ID Pedido: <span className="font-bold text-slate-300">{currPed.id}</span></div>
-                      <div className="text-white font-medium">{currPed.insumo}</div>
-                      <div className="text-slate-400">Obra Alinhada: <span className="font-semibold text-slate-300">{currPed.obra}</span></div>
-                      <div className="flex justify-between pt-1.5 border-t border-slate-850 mt-1">
-                        <span>Esperado Total:</span>
-                        <strong className="text-slate-300">{currPed.qtdSolicitada} {currPed.unidade}</strong>
+              const progressVal = currPed.qtdSolicitada > 0 ? Math.round((currPed.qtdRecebida / currPed.qtdSolicitada) * 100) : 0;
+              const additionalVal = currPed.qtdSolicitada > 0 && qtdReceiveInput > 0 ? Math.round((qtdReceiveInput / currPed.qtdSolicitada) * 100) : 0;
+              const totalPreviewVal = Math.min(100, progressVal + additionalVal);
+
+              return (
+                <>
+                  {/* Header */}
+                  <div className="p-6 border-b border-slate-800/80 flex justify-between items-center bg-[#171b26]/50">
+                    <div>
+                      <h3 className="text-md md:text-lg font-bold text-white tracking-tight">RECEBIMENTO DE PEDIDO DE COMPRA</h3>
+                      <span className="text-xs text-slate-400 mt-1 block">Vínculo: Pedido #{currPed.id}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowReceiveModal(false)}
+                      className="text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-wider"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleConfirmReceipt} className="p-6 space-y-5">
+                    
+                    {/* Top 2-Column Info Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Obra Card */}
+                      <div className="bg-[#0F1115]/60 border border-slate-800 p-4.5 rounded-xl flex flex-col gap-1.5 shadow-sm min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">OBRA DE ABASTECIMENTO</span>
+                        <span className="text-sm font-extrabold text-[#ECEEF2] truncate" title={currPed.obra}>{currPed.obra}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Pendente Restante:</span>
-                        <strong className="text-amber-500">{currPed.qtdSolicitada - currPed.qtdRecebida} {currPed.unidade}</strong>
+
+                      {/* Insumo Card */}
+                      <div className="bg-[#0F1115]/60 border border-slate-800 p-4.5 rounded-xl flex flex-col gap-1.5 shadow-sm min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">INSUMO</span>
+                        <span className="text-sm font-extrabold text-[#ECEEF2] truncate" title={currPed.insumo}>{currPed.insumo}</span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
 
-              {/* Delivery Input Quantity */}
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Quantidade Entregue Agora:</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={qtdReceiveInput}
-                  onChange={(e) => setQtdReceiveInput(Math.max(1, parseInt(e.target.value) || 0))}
-                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
+                    {/* Numeric Tracking Panel */}
+                    <div className="bg-[#0F1115] border border-slate-800 rounded-xl p-4.5 space-y-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-400 font-medium">Total do Pedido de Compra:</span>
+                        <span className="text-white font-extrabold">{currPed.qtdSolicitada} {currPed.unidade.toUpperCase()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-400 font-medium">Entregue:</span>
+                        <span className="text-[#10B981] font-extrabold">{currPed.qtdRecebida} {currPed.unidade.toUpperCase()}</span>
+                      </div>
 
-              {/* Auto full check */}
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const currentPed = pedidos.find(p => p.id === selectedPedidoId);
-                    if (currentPed) {
-                      setQtdReceiveInput(currentPed.qtdSolicitada - currentPed.qtdRecebida);
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs text-emerald-400 hover:text-white hover:bg-emerald-950/20 border border-emerald-500/20 rounded transition-all font-semibold"
-                >
-                  Receber Tudo
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold transition-all"
-                >
-                  Confirmar Entrega
-                </button>
-              </div>
+                      <div className="border-t border-slate-800 my-1"></div>
 
-            </form>
+                      <div className="flex justify-between items-center text-sm pt-0.5">
+                        <span className="text-slate-350 font-semibold">Saldo Pendente:</span>
+                        <span className="text-[#FFC800] font-extrabold">{Math.max(0, currPed.qtdSolicitada - currPed.qtdRecebida)} {currPed.unidade.toUpperCase()}</span>
+                      </div>
+
+                      {/* Dynamic filler progress bar */}
+                      <div className="space-y-1.5 pt-2">
+                        <div className="w-full bg-[#090b0e] rounded-full h-2.5 overflow-hidden border border-slate-900 shadow-inner relative">
+                          {/* Highlight background of future prediction */}
+                          <div
+                            className="h-full bg-indigo-500/40 rounded-full transition-all duration-300 absolute left-0 top-0"
+                            style={{ width: `${totalPreviewVal}%` }}
+                          ></div>
+                          {/* Current verified fill */}
+                          <div
+                            className="h-full bg-[#059669] rounded-full transition-all duration-200 absolute left-0 top-0"
+                            style={{ width: `${progressVal}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-slate-500 font-medium">
+                          <span>Entregue: {progressVal}%</span>
+                          {additionalVal > 0 && <span className="text-indigo-400 font-semibold">Simulado +{additionalVal}%</span>}
+                          <span>Total: {totalPreviewVal}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quantity input */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-2">Quantidade Entregue neste Recebimento: *</label>
+                      <div className="flex gap-3">
+                        <input
+                          type="number"
+                          placeholder="Ex: 150"
+                          min="1"
+                          value={qtdReceiveInput}
+                          onChange={(e) => {
+                            const inputValStr = e.target.value;
+                            if (inputValStr === '') {
+                              setQtdReceiveInput('');
+                            } else {
+                              const pending = currPed.qtdSolicitada - currPed.qtdRecebida;
+                              const val = Number(inputValStr);
+                              if (val > pending) {
+                                setQtdReceiveInput(pending);
+                                triggerToast(`A quantidade não pode exceder o saldo pendente de ${pending} ${currPed.unidade.toUpperCase()}`, 'warn');
+                              } else if (val < 0) {
+                                setQtdReceiveInput(0);
+                              } else {
+                                setQtdReceiveInput(val);
+                              }
+                            }
+                          }}
+                          className="flex-1 bg-[#0F1115] border border-slate-750 rounded-xl p-3 text-sm text-white placeholder-slate-700 font-semibold focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]/40 focus:outline-none transition-colors"
+                          required
+                        />
+                        <div className="bg-[#0F1115] border border-slate-750 text-slate-400 text-xs font-bold uppercase rounded-xl px-4 flex items-center justify-center shrink-0 min-w-[55px]">
+                          {currPed.unidade.toUpperCase()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dual-column Nota Fiscal / Responsibility */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-350 block mb-1.5">Nota Fiscal / Documento:</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: NF-12891"
+                          value={receiptNotaFiscal}
+                          onChange={(e) => setReceiptNotaFiscal(e.target.value)}
+                          className="w-full bg-[#0F1115] border border-slate-750 rounded-xl p-3 text-xs text-white placeholder-slate-700 focus:border-[#4F46E5] focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-350 block mb-1.5">Responsável de Almox: *</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Carlos Silva"
+                          value={receiptResponsavel}
+                          onChange={(e) => setReceiptResponsavel(e.target.value)}
+                          className="w-full bg-[#0F1115] border border-slate-750 rounded-xl p-3 text-xs text-white placeholder-slate-700 focus:border-[#4F46E5] focus:outline-none transition-colors"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Status Dropdown selector */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-350 block mb-1.5">Alteração de Status do Pedido:</label>
+                      <div className="relative">
+                        <select
+                          value={receiptStatusAlteracao}
+                          onChange={(e) => setReceiptStatusAlteracao(e.target.value)}
+                          className="w-full bg-[#0F1115] border border-slate-750 rounded-xl p-3 text-xs text-slate-200 focus:border-[#4F46E5] focus:outline-none appearance-none cursor-pointer pr-10 font-medium"
+                        >
+                          <option value="deduzir_auto">Dedução Automática pelo Saldo (Entregue/Parcial)</option>
+                          <option value="entregue">Forçar Status como Entregue (Manual)</option>
+                          <option value="parcial">Forçar Status como Parcial (Manual)</option>
+                          <option value="pendente">Forçar Status como Pendente (Manual)</option>
+                          <option value="cancelado">Forçar Status como Cancelado (Manual)</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                          ▼
+                        </div>
+                      </div>
+                      {receiptStatusAlteracao === 'deduzir_auto' && (
+                        <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1 bg-[#0F1115] p-2 rounded-lg border border-slate-800">
+                          <span>Status previsto (Automático):</span>
+                          {(() => {
+                            const projectedTotal = currPed.qtdRecebida + Number(qtdReceiveInput || 0);
+                            if (projectedTotal >= currPed.qtdSolicitada) {
+                              return <span className="text-emerald-400 font-extrabold bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/20">Totalmente Entregue</span>;
+                            } else if (projectedTotal > 0) {
+                              return <span className="text-amber-400 font-extrabold bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/20">Parcialmente Entregue</span>;
+                            } else {
+                              return <span className="text-slate-300 font-extrabold bg-slate-800/40 px-2 py-0.5 rounded border border-slate-700/60">Pendente</span>;
+                            }
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-800/80 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => setShowReceiveModal(false)}
+                        className="px-5 py-2.5 bg-slate-800 hover:bg-[#1E2330] text-slate-300 rounded-xl text-xs font-bold transition-all border border-slate-700/50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-[#4F46E5] hover:bg-[#5850EC] text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-650/10"
+                      >
+                        Confirmar Recebimento
+                      </button>
+                    </div>
+
+                  </form>
+                </>
+              );
+            })()}
+
           </div>
         </div>
       )}
