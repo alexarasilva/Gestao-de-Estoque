@@ -63,24 +63,70 @@ export function LogoIcon({ className = "w-9 h-9" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 100 100"
-      className={`${className} select-none shrink-0`}
+      className={`${className} select-none shrink-0 rounded-full`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <circle cx="50" cy="50" r="48" fill="#FFC800" />
+      {/* Inner solid upward-pointing triangle (drawn first so black chevron masks it cleanly) */}
+      <path
+        d="M50 56 L59 75 H41 Z"
+        fill="#FFFFFF"
+      />
       {/* Stylized upward delta chevron outer contour */}
       <path
         d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
         fill="#000000"
       />
-      {/* Inner solid upward-pointing triangle */}
-      <path
-        d="M50 54 L58.3 75 H41.7 Z"
-        fill="#000000"
-      />
     </svg>
   );
 }
+
+// Corporate Logo Wide (without circular background) to display beautifully at the bottom of the sidebar
+export function CorporateLogoWide({ collapsed = false }: { collapsed?: boolean }) {
+  if (collapsed) {
+    return (
+      <div className="flex justify-center py-4 px-2 w-full border-t border-slate-800/40 mt-4">
+        <svg viewBox="20 15 60 70" className="w-8 h-8 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Inner solid upward-pointing triangle */}
+          <path
+            d="M50 56 L59 75 H41 Z"
+            fill="#FFFFFF"
+          />
+          {/* Yellow delta chevron logo */}
+          <path
+            d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
+            fill="#FFC800"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-4 mt-4 border-t border-slate-800/40 flex flex-col items-center justify-center w-full">
+      <div className="w-full flex items-center justify-center gap-3 hover:opacity-95 transition-all">
+        <svg viewBox="20 15 60 70" className="w-12 h-12 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Inner solid upward-pointing triangle */}
+          <path
+            d="M50 56 L59 75 H41 Z"
+            fill="#FFFFFF"
+          />
+          {/* Yellow delta chevron logo */}
+          <path
+            d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
+            fill="#FFC800"
+          />
+        </svg>
+        <div className="flex flex-col">
+          <span className="text-sm font-sans font-black tracking-widest text-white leading-none">ABSOLUTA</span>
+          <span className="text-[9px] font-mono font-extrabold tracking-[0.25em] text-[#FFC800] mt-1 leading-none">CONSTRUTORA</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // Interfaces
 export interface Obra {
@@ -1994,7 +2040,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           {!isSidebarCollapsed ? (
             <div className="flex items-center justify-between gap-2.5 mb-6">
               <div className="flex items-center gap-3">
-                <LogoIcon className="w-12 h-12 shadow-lg shadow-yellow-500/20 shrink-0 transition-transform duration-300 hover:scale-105" />
+                <LogoIcon className="w-12 h-12 rounded-full shadow-lg shadow-yellow-500/20 shrink-0 transition-transform duration-300 hover:scale-105" />
                 <div>
                   <h1 className="text-base font-sans font-black tracking-tight text-white uppercase leading-none">Gestão de <span className="text-[#FFC800]">Estoque</span></h1>
                   <p className="text-[10px] text-yellow-505 font-mono tracking-widest uppercase font-extrabold mt-1">ABSOLUTA CONSTRUTORA</p>
@@ -2011,7 +2057,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 mb-6">
-              <LogoIcon className="w-11 h-11 shadow-lg shadow-yellow-500/20 transition-transform duration-300 hover:scale-105" />
+              <LogoIcon className="w-11 h-11 rounded-full shadow-lg shadow-yellow-500/20 transition-transform duration-300 hover:scale-105" />
               <button 
                 type="button" 
                 onClick={() => setIsSidebarCollapsed(false)}
@@ -2202,6 +2248,9 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               )}
             </button>
           </nav>
+          
+          {/* Logo Corporativo sem Fundo */}
+          <CorporateLogoWide collapsed={isSidebarCollapsed} />
         </div>
 
         {/* User profile / Footer */}
