@@ -188,8 +188,25 @@ export default function App() {
   // Search filter query
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Table Status Filter
-  const [statusFilter, setStatusFilter] = useState<string>('Todos');
+  // Table Status Filter (Supports selecting multiple status values)
+  const [statusFilter, setStatusFilter] = useState<string[]>(['Todos']);
+
+  const handleStatusFilterToggle = (st: string) => {
+    if (st === 'Todos') {
+      setStatusFilter(['Todos']);
+    } else {
+      let nextFilters = statusFilter.filter(item => item !== 'Todos');
+      if (nextFilters.includes(st)) {
+        nextFilters = nextFilters.filter(item => item !== st);
+      } else {
+        nextFilters.push(st);
+      }
+      if (nextFilters.length === 0) {
+        nextFilters = ['Todos'];
+      }
+      setStatusFilter(nextFilters);
+    }
+  };
 
   // General Transaction Count (Movimentações Hoje)
   const [movementsCount, setMovementsCount] = useState<number>(142);
@@ -551,7 +568,7 @@ export default function App() {
         (p.descricaoDetalhe || '').toLowerCase().includes(q) ||
         (p.marca || '').toLowerCase().includes(q);
         
-      const matchStatus = statusFilter === 'Todos' || p.status === statusFilter;
+      const matchStatus = statusFilter.includes('Todos') || statusFilter.includes(p.status);
       return matchObra && matchSearch && matchStatus;
     });
 
@@ -901,7 +918,7 @@ export default function App() {
 
     setMovementsCount(prev => prev + 1);
     setShowReceiveModal(false);
-    triggerToast(`Entrada registrada com sucesso! Estoque atualizado.`, 'success');
+    triggerToast('PEDIDO RECEBIDO COM SUCESSO', 'success');
   };
 
   // Function to process imported Sienge items (UPSERT / MERGE same-pedido items)
@@ -1931,16 +1948,28 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
       
       {/* Toast Notification Bar */}
       {toast.message && (
-        <div id="status-toast" className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-lg shadow-2xl border text-sm animate-bounce 
-          ${toast.type === 'success' ? 'bg-[#152e24] border-emerald-500/40 text-emerald-300' : ''}
-          ${toast.type === 'warn' ? 'bg-[#31231a] border-amber-500/40 text-amber-300' : ''}
-          ${toast.type === 'info' ? 'bg-[#192330] border-blue-500/40 text-blue-300' : ''}
-        `}>
-          {toast.type === 'success' && <CheckCircle size={18} className="text-emerald-400" />}
-          {toast.type === 'warn' && <AlertTriangle size={18} className="text-amber-400" />}
-          {toast.type === 'info' && <Info size={18} className="text-blue-400" />}
-          <span className="font-medium">{toast.message}</span>
-        </div>
+        toast.message === 'PEDIDO RECEBIDO COM SUCESSO' ? (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in">
+            <div id="status-toast" className="bg-[#152e24] border border-emerald-500/80 text-emerald-300 px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 text-center max-w-sm animate-bounce">
+              <CheckCircle size={44} className="text-emerald-400" />
+              <div className="flex flex-col gap-1.5">
+                <span className="font-bold text-lg tracking-wider text-white">PEDIDO RECEBIDO COM SUCESSO</span>
+                <span className="text-xs text-emerald-300/80">O recebimento do pedido de compra foi concluído e o saldo atualizado.</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div id="status-toast" className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-lg shadow-2xl border text-sm animate-bounce 
+            ${toast.type === 'success' ? 'bg-[#152e24] border-emerald-500/40 text-emerald-300' : ''}
+            ${toast.type === 'warn' ? 'bg-[#31231a] border-amber-500/40 text-amber-300' : ''}
+            ${toast.type === 'info' ? 'bg-[#192330] border-blue-500/40 text-blue-300' : ''}
+          `}>
+            {toast.type === 'success' && <CheckCircle size={18} className="text-emerald-400" />}
+            {toast.type === 'warn' && <AlertTriangle size={18} className="text-amber-400" />}
+            {toast.type === 'info' && <Info size={18} className="text-blue-400" />}
+            <span className="font-medium">{toast.message}</span>
+          </div>
+        )
       )}
 
       {/* Sidebar Navigation */}
@@ -2564,17 +2593,21 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto justify-end items-center">
                   <div className="flex bg-[#0F1115] p-1 rounded-md border border-slate-700 text-xs text-slate-400">
-                    {['Todos', 'Pendente', 'Parcial', 'Entregue'].map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => setStatusFilter(st)}
-                        className={`px-2.5 py-1 rounded transition-colors ${
-                          statusFilter === st ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
-                        }`}
-                      >
-                        {st}
-                      </button>
-                    ))}
+                    {['Todos', 'Pendente', 'Parcial', 'Entregue'].map((st) => {
+                      const isActive = statusFilter.includes(st);
+                      return (
+                        <button
+                          key={st}
+                          onClick={() => handleStatusFilterToggle(st)}
+                          className={`px-2.5 py-1 rounded transition-colors ${
+                            isActive ? 'bg-emerald-600/20 text-emerald-400 font-semibold' : 'hover:text-slate-200'
+                          }`}
+                          title={st === 'Todos' ? 'Mostrar todos os status' : `Filtrar por ${st} (Clique para selecionar múltiplos)`}
+                        >
+                          {st}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="flex bg-[#0F1115] p-1 rounded-md border border-slate-700 text-xs text-slate-400">
@@ -2610,14 +2643,14 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   <table className="w-full text-left text-xs text-slate-300 border-collapse">
                     <thead className="bg-[#1C2028] text-slate-400 text-[10.5px] uppercase font-mono tracking-wider border-b border-slate-800">
                       <tr>
-                        {/* CÓDIGO / EMISSÃO */}
+                        {/* PEDIDO DE COMPRA / EMISSÃO */}
                         <th 
                           className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
                           onClick={() => handleSortToggle('id_numeric')}
-                          title="Clique para ordenar por Código de Pedido"
+                          title="Clique para ordenar por Pedido de Compra"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Código / Emissão</span>
+                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Pedido de Compra / Emissão</span>
                             <span className="inline-flex shrink-0">
                               {sortConfig.key === 'id_numeric' ? (
                                 sortConfig.direction === 'asc' ? (
