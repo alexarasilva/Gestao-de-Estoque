@@ -189,7 +189,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Table Status Filter (Supports selecting multiple status values)
-  const [statusFilter, setStatusFilter] = useState<string[]>(['Todos']);
+  const [statusFilter, setStatusFilter] = useState<string[]>(['Pendente']);
 
   const handleStatusFilterToggle = (st: string) => {
     if (st === 'Todos') {
@@ -210,6 +210,11 @@ export default function App() {
 
   // General Transaction Count (Movimentações Hoje)
   const [movementsCount, setMovementsCount] = useState<number>(142);
+
+  // Last Sienge Import Date and Time
+  const [lastImportDate, setLastImportDate] = useState<string>(() => {
+    return localStorage.getItem('last_import_date') || '19/06/2026 às 08:30';
+  });
 
   // Dynamic list of active Construction sites (Obras)
   // Google Sheets Integration URL and Settings persisted via LocalStorage
@@ -444,7 +449,7 @@ export default function App() {
     setToast({ message, type });
     setTimeout(() => {
       setToast({ message: '', type: null });
-    }, 4500);
+    }, 2250);
   };
 
   const handleSortToggle = (key: keyof Pedido | 'progress' | 'id_numeric') => {
@@ -1035,6 +1040,16 @@ export default function App() {
       newItems: newItemsCount,
       updatedQtds: updatedQuantitiesCount
     });
+
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const formattedDate = `${day}/${month}/${year} às ${hours}:${minutes}`;
+    setLastImportDate(formattedDate);
+    localStorage.setItem('last_import_date', formattedDate);
     
     triggerToast(
       `Verificação concluída! ${newOrdersCount} novos pedidos, ${newItemsCount} itens adicionados e ${updatedQuantitiesCount} quantidades atualizadas!`,
@@ -1978,11 +1993,11 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           {/* Logo / Branding */}
           {!isSidebarCollapsed ? (
             <div className="flex items-center justify-between gap-2.5 mb-6">
-              <div className="flex items-center gap-2.5">
-                <LogoIcon className="w-9 h-9 shadow-lg shadow-yellow-500/10 shrink-0" />
+              <div className="flex items-center gap-3">
+                <LogoIcon className="w-12 h-12 shadow-lg shadow-yellow-500/20 shrink-0 transition-transform duration-300 hover:scale-105" />
                 <div>
                   <h1 className="text-base font-sans font-black tracking-tight text-white uppercase leading-none">Gestão de <span className="text-[#FFC800]">Estoque</span></h1>
-                  <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase font-bold">ABSOLUTA CONSTRUTORA</p>
+                  <p className="text-[10px] text-yellow-505 font-mono tracking-widest uppercase font-extrabold mt-1">ABSOLUTA CONSTRUTORA</p>
                 </div>
               </div>
               <button 
@@ -1996,7 +2011,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 mb-6">
-              <LogoIcon className="w-9 h-9 shadow-lg shadow-yellow-500/10" />
+              <LogoIcon className="w-11 h-11 shadow-lg shadow-yellow-500/20 transition-transform duration-300 hover:scale-105" />
               <button 
                 type="button" 
                 onClick={() => setIsSidebarCollapsed(false)}
@@ -2103,7 +2118,10 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
             <button
               id="nav-tab-pedidos"
-              onClick={() => setCurrentTab('pedidos')}
+              onClick={() => {
+                setCurrentTab('pedidos');
+                setStatusFilter(['Pendente']);
+              }}
               className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5 relative' : 'justify-between px-4 py-2.5'} rounded-md text-sm font-medium transition-all ${
                 currentTab === 'pedidos'
                   ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20'
@@ -2227,43 +2245,47 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             
             <span className="text-slate-700 font-serif italic">|</span>
             <div className="text-[10px] text-slate-500 font-medium uppercase tracking-widest hidden sm:block">
-              Base atualizada hoje às 08:30 • Movimentações: {movementsCount}
+              Base atualizada em {lastImportDate} • Movimentações: {movementsCount}
             </div>
           </div>
 
           <div className="flex gap-2.5">
-            <button
-              id="btn-baixa-material"
-              onClick={() => {
-                // Prepopulate current work selection if valid
-                if (listObras.includes(selectedObra)) {
-                  setNewWithdrawObra(selectedObra);
-                } else {
-                  setNewWithdrawObra('Residencial Alvorada');
-                }
-                setNewWithdrawInsumo('');
-                setNewWithdrawQtd(10);
-                setShowWithdrawModal(true);
-              }}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-sm font-medium border border-slate-700 transition-all flex items-center gap-1.5"
-            >
-              <ArrowRightLeft size={15} className="text-slate-300" />
-              Baixa de Material
-            </button>
-            
-            <button
-              id="btn-nova-entrada"
-              onClick={() => {
-                if (listObras.includes(selectedObra)) {
-                  setNewOrderObra(selectedObra);
-                }
-                setShowOrderModal(true);
-              }}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-medium transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/10"
-            >
-              <Plus size={16} />
-              Nova Entrada
-            </button>
+            {currentTab !== 'pedidos' && currentTab !== 'painel' && (
+              <>
+                <button
+                  id="btn-baixa-material"
+                  onClick={() => {
+                    // Prepopulate current work selection if valid
+                    if (listObras.includes(selectedObra)) {
+                      setNewWithdrawObra(selectedObra);
+                    } else {
+                      setNewWithdrawObra('Residencial Alvorada');
+                    }
+                    setNewWithdrawInsumo('');
+                    setNewWithdrawQtd(10);
+                    setShowWithdrawModal(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-sm font-medium border border-slate-700 transition-all flex items-center gap-1.5"
+                >
+                  <ArrowRightLeft size={15} className="text-slate-300" />
+                  Baixa de Material
+                </button>
+                
+                <button
+                  id="btn-nova-entrada"
+                  onClick={() => {
+                    if (listObras.includes(selectedObra)) {
+                      setNewOrderObra(selectedObra);
+                    }
+                    setShowOrderModal(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-medium transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/10"
+                >
+                  <Plus size={16} />
+                  Nova Entrada
+                </button>
+              </>
+            )}
           </div>
         </header>
 
