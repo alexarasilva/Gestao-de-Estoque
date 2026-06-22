@@ -1108,6 +1108,8 @@ export default function App() {
           id: p.id,
           codigo: p.codigo || '',
           insumo: p.insumo,
+          codDetalhe: p.codDetalhe || '',
+          descricaoDetalhe: p.descricaoDetalhe || '',
           obra: p.obra,
           tipo: 'ENTRADA',
           quantidade: p.qtdRecebida,
@@ -1125,12 +1127,16 @@ export default function App() {
 
     // 2. Add withdrawals from baixas
     baixas.forEach((b) => {
+      const refPedido = pedidos.find(p => (p.codigo && p.codigo === b.codigo) || (p.insumo && p.insumo === b.insumo));
+      const isRecons = b.id.startsWith('RE-') || b.destino?.startsWith('Ajuste:');
       list.push({
         id: b.id,
         codigo: b.codigo || '',
         insumo: b.insumo,
+        codDetalhe: refPedido?.codDetalhe || '',
+        descricaoDetalhe: refPedido?.descricaoDetalhe || '',
         obra: b.obra,
-        tipo: 'SAIDA',
+        tipo: isRecons ? 'AJUSTE' : 'SAIDA',
         quantidade: b.quantidade,
         unidade: b.unidade,
         documento: b.destino || 'Retirada de Obra',
@@ -1182,6 +1188,7 @@ export default function App() {
       if (reportSelectedType !== 'Ambos') {
         if (reportSelectedType === 'Entrada' && m.tipo !== 'ENTRADA') return false;
         if (reportSelectedType === 'Saída' && m.tipo !== 'SAIDA') return false;
+        if (reportSelectedType === 'Ajuste' && m.tipo !== 'AJUSTE') return false;
       }
       // 4. Material/Insumo filter
       if (reportSelectedMaterial !== 'Todos os Materiais' && m.insumo.trim() !== reportSelectedMaterial) {
@@ -1221,10 +1228,11 @@ export default function App() {
 
   // Handler for estorno/deletion of movements from diary
   const handleEstornoMovement = (item: any) => {
-    if (item.tipo === 'SAIDA') {
-      executeGuardedAction('dar_baixa', 'Estornar Movimentação de Saída', () => {
+    if (item.tipo === 'SAIDA' || item.tipo === 'AJUSTE') {
+      const actionName = item.tipo === 'AJUSTE' ? 'Estornar Ajuste de Reconciliação' : 'Estornar Movimentação de Saída';
+      executeGuardedAction('dar_baixa', actionName, () => {
         setBaixas(prev => prev.filter(b => b.id !== item.id));
-        triggerToast('Lançamento de saída estornado com sucesso! Saldo reorganizado.', 'success');
+        triggerToast(item.tipo === 'AJUSTE' ? 'Reconciliação estornada! Saldo original restaurado.' : 'Lançamento de saída estornado com sucesso! Saldo reorganizado.', 'success');
       });
     } else {
       executeGuardedAction('receber_mercadoria', 'Estornar Recebimento de Entrada', () => {
@@ -4185,9 +4193,10 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                       onChange={(e) => setReportSelectedType(e.target.value)}
                       className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="Ambos">Ambos (Entrada/Saída)</option>
+                      <option value="Ambos">Ambos (Entrada/Saída/Ajuste)</option>
                       <option value="Entrada">Entrada (Abastecimento)</option>
                       <option value="Saída">Saída (Consumo/Gasto)</option>
+                      <option value="Ajuste">Ajuste (Reconciliação)</option>
                     </select>
                   </div>
 
@@ -4246,7 +4255,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               </div>
 
               {/* Dynamic KPI summary card in search scope */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" id="filtered-report-summary-cards">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4" id="filtered-report-summary-cards">
                 <div className="p-4 bg-[#161920] border border-slate-800 rounded-xl">
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Registros Encontrados</span>
                   <div className="mt-1 flex items-baseline gap-2">
@@ -4272,6 +4281,15 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                     <span className="text-xs text-slate-500">baixas registradas</span>
                   </div>
                 </div>
+                <div className="p-4 bg-[#161920] border border-slate-800 rounded-xl">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Ajustes Realizados</span>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-black font-sans text-[#FFC800]">
+                      {filteredMovements.filter(m => m.tipo === 'AJUSTE').length}
+                    </span>
+                    <span className="text-xs text-slate-500">reconciliações</span>
+                  </div>
+                </div>
               </div>
 
               {/* Log List of historical withdrawals (Historico de Baixas / Diário de Retiradas) resembling user image */}
@@ -4291,8 +4309,9 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                         <th className="py-4.5 px-5">Data / Hora</th>
                         <th className="py-4.5 px-4 text-center">Tipo</th>
                         <th className="py-4.5 px-4">Obra Destino</th>
+                        <th className="py-4.5 px-4">Código</th>
                         <th className="py-4.5 px-4">Insumo</th>
-                        <th className="py-4.5 px-4 text-right">Quantidade</th>
+                        <th className="py-4.5 px-4 text-right">QTD.</th>
                         <th className="py-4.5 px-5">Documento / Justificativa de Uso</th>
                         <th className="py-4.5 px-4">Responsável Técnico</th>
                         <th className="py-4.5 px-5 text-center">Estorno</th>
@@ -4301,7 +4320,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                     <tbody className="divide-y divide-slate-800/50 font-sans text-xs">
                       {filteredMovements.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-14 text-center text-slate-500 bg-[#161920]">
+                          <td colSpan={9} className="py-14 text-center text-slate-500 bg-[#161920]">
                             <ClipboardList size={36} className="mx-auto text-slate-800 mb-3" />
                             <p className="text-sm font-semibold text-white">Nenhuma movimentação de estoque localizada.</p>
                             <p className="text-[11px] text-slate-500 mt-1">Limpe os filtros de pesquisa acima para reexibir todos os lançamentos.</p>
@@ -4310,6 +4329,28 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                       ) : (
                         filteredMovements.map((item) => {
                           const isEntrada = item.tipo === 'ENTRADA';
+                          const isAjuste = item.tipo === 'AJUSTE';
+
+                          // Determine displayed sign, value, and color class for quantity
+                          let qtyDisplay = '';
+                          let qtyColorClass = 'text-rose-400';
+
+                          if (isEntrada) {
+                            qtyDisplay = `${item.quantidade}`;
+                            qtyColorClass = 'text-emerald-400';
+                          } else if (isAjuste) {
+                            if (item.quantidade < 0) {
+                              qtyDisplay = `${Math.abs(item.quantidade)}`;
+                              qtyColorClass = 'text-emerald-400';
+                            } else {
+                              qtyDisplay = `-${Math.abs(item.quantidade)}`;
+                              qtyColorClass = 'text-rose-400';
+                            }
+                          } else {
+                            qtyDisplay = `-${item.quantidade}`;
+                            qtyColorClass = 'text-rose-400';
+                          }
+
                           return (
                             <tr key={`${item.tipo}:::${item.id}:::${item.codigo}`} className="hover:bg-slate-800/10 transition-colors">
                               
@@ -4324,6 +4365,10 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   <span className="inline-block px-3 py-1 text-[9px] font-extrabold uppercase bg-[#004D40]/30 text-emerald-400 border border-emerald-500/20 rounded">
                                     Entrada
                                   </span>
+                                ) : isAjuste ? (
+                                  <span className="inline-block px-3 py-1 text-[9px] font-extrabold uppercase bg-[#FFC800]/10 text-[#FFC800] border border-[#FFC800]/20 rounded">
+                                    Ajuste
+                                  </span>
                                 ) : (
                                   <span className="inline-block px-3 py-1 text-[9px] font-extrabold uppercase bg-[#4A1525]/30 text-rose-400 border border-rose-500/20 rounded">
                                     Saída
@@ -4336,14 +4381,28 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                 {item.obra}
                               </td>
 
+                              {/* CÓDIGO DO INSUMO */}
+                              <td className="py-4 px-4 font-mono text-slate-400">
+                                {item.codigo || '-'}
+                              </td>
+
                               {/* INSUMO */}
-                              <td className="py-4 px-4 text-slate-300 font-semibold" title={item.insumo}>
-                                {item.insumo}
+                              <td className="py-4 px-4" title={item.insumo}>
+                                <span className="block font-bold text-slate-200">{item.insumo}</span>
+                                {(item.codDetalhe || item.descricaoDetalhe) ? (
+                                  <span className="block text-[11px] text-slate-400 font-medium font-sans mt-0.5">
+                                    {`${item.codDetalhe || ''} ${item.descricaoDetalhe || ''}`.trim()}
+                                  </span>
+                                ) : (
+                                  <span className="block text-[11px] text-slate-500 italic mt-0.5">
+                                    Sem detalhamento adicional
+                                  </span>
+                                )}
                               </td>
 
                               {/* QUANTIDADE */}
-                              <td className={`py-4 px-4 text-right font-bold font-mono whitespace-nowrap ${isEntrada ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {isEntrada ? `+${item.quantidade}` : `-${item.quantidade}`} <span className="text-[10px] font-medium text-slate-500">{item.unidade}</span>
+                              <td className={`py-4 px-4 text-right font-bold font-mono whitespace-nowrap ${qtyColorClass}`}>
+                                {qtyDisplay} <span className="text-[10px] font-medium text-slate-500">{item.unidade}</span>
                               </td>
 
                               {/* DOCUMENTO / JUSTIFICATIVA DE USO */}
