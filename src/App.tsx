@@ -60,68 +60,114 @@ import JSZip from 'jszip';
 
 // Custom LogoIcon component reflecting the corporate design identity (stylized Delta/A in a yellow circle)
 export function LogoIcon({ className = "w-9 h-9" }: { className?: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <svg
+        viewBox="0 0 100 100"
+        className={`${className} select-none shrink-0 rounded-full`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="50" cy="50" r="48" fill="#FFC800" />
+        {/* Inner solid upward-pointing triangle (drawn first so black chevron masks it cleanly) */}
+        <path
+          d="M50 56 L59 75 H41 Z"
+          fill="#FFFFFF"
+        />
+        {/* Stylized upward delta chevron outer contour */}
+        <path
+          d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
+          fill="#000000"
+        />
+      </svg>
+    );
+  }
+
   return (
-    <svg
-      viewBox="0 0 100 100"
-      className={`${className} select-none shrink-0 rounded-full`}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <circle cx="50" cy="50" r="48" fill="#FFC800" />
-      {/* Inner solid upward-pointing triangle (drawn first so black chevron masks it cleanly) */}
-      <path
-        d="M50 56 L59 75 H41 Z"
-        fill="#FFFFFF"
-      />
-      {/* Stylized upward delta chevron outer contour */}
-      <path
-        d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
-        fill="#000000"
-      />
-    </svg>
+    <img
+      src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
+      alt="Logo Absoluta"
+      className={`${className} select-none shrink-0 rounded-full object-contain`}
+      onError={() => setHasError(true)}
+      referrerPolicy="no-referrer"
+    />
   );
 }
 
 // Corporate Logo Wide (without circular background) to display beautifully at the bottom of the sidebar
 export function CorporateLogoWide({ collapsed = false }: { collapsed?: boolean }) {
+  const [hasError, setHasError] = useState(false);
+
   if (collapsed) {
+    if (hasError) {
+      return (
+        <div className="flex justify-center py-4 px-2 w-full border-t border-slate-800/40 mt-4">
+          <svg viewBox="20 15 60 70" className="w-8 h-8 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Inner solid upward-pointing triangle */}
+            <path
+              d="M50 56 L59 75 H41 Z"
+              fill="#FFFFFF"
+            />
+            {/* Yellow delta chevron logo */}
+            <path
+              d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
+              fill="#FFC800"
+            />
+          </svg>
+        </div>
+      );
+    }
+
     return (
       <div className="flex justify-center py-4 px-2 w-full border-t border-slate-800/40 mt-4">
-        <svg viewBox="20 15 60 70" className="w-8 h-8 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {/* Inner solid upward-pointing triangle */}
-          <path
-            d="M50 56 L59 75 H41 Z"
-            fill="#FFFFFF"
-          />
-          {/* Yellow delta chevron logo */}
-          <path
-            d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
-            fill="#FFC800"
-          />
-        </svg>
+        <img
+          src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
+          alt="Logo Absoluta"
+          className="w-10 h-10 select-none shrink-0 object-contain rounded-full"
+          onError={() => setHasError(true)}
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="px-4 py-4 mt-4 border-t border-slate-800/40 flex flex-col items-center justify-center w-full">
+        <div className="w-full flex items-center justify-center gap-3 hover:opacity-95 transition-all">
+          <svg viewBox="20 15 60 70" className="w-12 h-12 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Inner solid upward-pointing triangle */}
+            <path
+              d="M50 56 L59 75 H41 Z"
+              fill="#FFFFFF"
+            />
+            {/* Yellow delta chevron logo */}
+            <path
+              d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
+              fill="#FFC800"
+            />
+          </svg>
+          <div className="flex flex-col">
+            <span className="text-sm font-sans font-black tracking-widest text-white leading-none">ABSOLUTA</span>
+            <span className="text-[9px] font-mono font-extrabold tracking-[0.25em] text-[#FFC800] mt-1 leading-none">CONSTRUTORA</span>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-4 mt-4 border-t border-slate-800/40 flex flex-col items-center justify-center w-full">
-      <div className="w-full flex items-center justify-center gap-3 hover:opacity-95 transition-all">
-        <svg viewBox="20 15 60 70" className="w-12 h-12 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {/* Inner solid upward-pointing triangle */}
-          <path
-            d="M50 56 L59 75 H41 Z"
-            fill="#FFFFFF"
-          />
-          {/* Yellow delta chevron logo */}
-          <path
-            d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
-            fill="#FFC800"
-          />
-        </svg>
-        <div className="flex flex-col">
-          <span className="text-sm font-sans font-black tracking-widest text-white leading-none">ABSOLUTA</span>
-          <span className="text-[9px] font-mono font-extrabold tracking-[0.25em] text-[#FFC800] mt-1 leading-none">CONSTRUTORA</span>
-        </div>
+    <div className="px-4 py-4 mt-4 border-t border-slate-800/40 flex items-center justify-center w-full">
+      <div className="w-full flex items-center justify-center hover:opacity-95 transition-all px-2">
+        <img
+          src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/logo-absoluta-construtora-topo.png"
+          alt="Absoluta Construtora Logo"
+          className="w-48 h-auto select-none shrink-0 object-contain"
+          onError={() => setHasError(true)}
+          referrerPolicy="no-referrer"
+        />
       </div>
     </div>
   );
@@ -209,6 +255,8 @@ export interface Baixa {
   unidade: string;
   colaborador: string;
   data: string;
+  destino?: string;
+  autorizado?: string;
 }
 
 export interface Usuario {
@@ -224,9 +272,50 @@ export interface Usuario {
   podeExcluirObra: boolean;
 }
 
+function parseDateTimeString(str: string | undefined): Date | null {
+  if (!str) return null;
+  const cleaned = str.trim();
+  const dateTimeParts = cleaned.split(' ');
+  const dateStr = dateTimeParts[0];
+  const timeStr = dateTimeParts[1] || '00:00';
+
+  const dateParts = dateStr.split('/');
+  if (dateParts.length === 3) {
+    const day = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const year = parseInt(dateParts[2], 10);
+    const timeParts = timeStr.split(':');
+    const hour = parseInt(timeParts[0] || '0', 10);
+    const minute = parseInt(timeParts[1] || '0', 10);
+    const second = parseInt(timeParts[2] || '0', 10);
+    const d = new Date(year, month, day, hour, minute, second);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(cleaned);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateTimeToISO(date: Date | null): string {
+  if (!date) return '-';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 export default function App() {
   // Current Navigation View Tab
   const [currentTab, setCurrentTab] = useState<'painel' | 'pedidos' | 'estoque' | 'relatorios' | 'admin'>('painel');
+
+  // Reconciliation states
+  const [showReconcileModal, setShowReconcileModal] = useState<boolean>(false);
+  const [reconcileItem, setReconcileItem] = useState<any>(null);
+  const [reconcileNewPhysicalQty, setReconcileNewPhysicalQty] = useState<number | ''>('');
+  const [reconcileJustificativa, setReconcileJustificativa] = useState<string>('');
+  const [reconcileResponsavel, setReconcileResponsavel] = useState<string>('');
 
   // Currently Selected Construction Project (Obra Filter)
   const [selectedObra, setSelectedObra] = useState<string>('Todas as Obras');
@@ -431,6 +520,8 @@ export default function App() {
   // Modals Visibility
   const [showOrderModal, setShowOrderModal] = useState<boolean>(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState<boolean>(false);
+  const [showWithdrawSuccessScreen, setShowWithdrawSuccessScreen] = useState<boolean>(false);
+  const [showReconcileSuccessScreen, setShowReconcileSuccessScreen] = useState<boolean>(false);
   const [showReceiveModal, setShowReceiveModal] = useState<boolean>(false);
 
   // Administrative Modals & States
@@ -469,6 +560,13 @@ export default function App() {
     key: '',
     direction: '',
   });
+  const [inventorySortConfig, setInventorySortConfig] = useState<{
+    key: 'obra' | 'insumo' | 'unidade' | 'recebido' | 'baixado' | 'saldo' | 'ultimaMovimentacao' | '';
+    direction: 'asc' | 'desc' | '';
+  }>({
+    key: 'ultimaMovimentacao',
+    direction: 'desc',
+  });
   const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [parsedImportItems, setParsedImportItems] = useState<Pedido[]>([]);
@@ -487,6 +585,17 @@ export default function App() {
   const [newWithdrawInsumo, setNewWithdrawInsumo] = useState<string>('');
   const [newWithdrawQtd, setNewWithdrawQtd] = useState<number>(10);
   const [newWithdrawColab, setNewWithdrawColab] = useState<string>('');
+  const [newWithdrawDestino, setNewWithdrawDestino] = useState<string>('');
+  const [newWithdrawAutorizado, setNewWithdrawAutorizado] = useState<string>('');
+
+  // Report tab filters dynamic local state variables
+  const [reportStartDate, setReportStartDate] = useState<string>('');
+  const [reportEndDate, setReportEndDate] = useState<string>('');
+  const [reportSelectedObra, setReportSelectedObra] = useState<string>('Todas as Obras');
+  const [reportSelectedUser, setReportSelectedUser] = useState<string>('Todos os Usuários');
+  const [reportSelectedType, setReportSelectedType] = useState<string>('Ambos');
+  const [reportSelectedMaterial, setReportSelectedMaterial] = useState<string>('Todos os Materiais');
+  const [reportSelectedSupplier, setReportSelectedSupplier] = useState<string>('Todos os Fornecedores');
 
   // Toast System
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warn' | 'info' | null }>({ message: '', type: null });
@@ -496,6 +605,69 @@ export default function App() {
     setTimeout(() => {
       setToast({ message: '', type: null });
     }, 2250);
+  };
+
+  const handleReconcileWeight = () => {
+    if (!reconcileItem) return;
+    const newQty = Number(reconcileNewPhysicalQty);
+    if (isNaN(newQty) || newQty < 0) {
+      triggerToast('Por favor, informe uma quantidade física válida.', 'warn');
+      return;
+    }
+
+    if (!reconcileJustificativa.trim()) {
+      triggerToast('O preenchimento do campo "Justificativa da Divergência" é obrigatório.', 'warn');
+      return;
+    }
+
+    if (!reconcileResponsavel.trim()) {
+      triggerToast('O preenchimento do campo "Responsável Técnico / Almoxarife" é obrigatório.', 'warn');
+      return;
+    }
+
+    const difference = reconcileItem.saldo - newQty;
+    if (difference === 0) {
+      triggerToast('A quantidade informada é idêntica ao saldo atual.', 'info');
+      setShowReconcileModal(false);
+      return;
+    }
+
+    const newBaixa: Baixa = {
+      id: `RE-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      insumo: reconcileItem.insumo,
+      codigo: reconcileItem.codigo,
+      obra: reconcileItem.obra,
+      quantidade: difference,
+      unidade: reconcileItem.unidade,
+      colaborador: reconcileResponsavel.trim(),
+      data: new Date().toLocaleString('pt-BR', { hour12: false }).replace(',', ''),
+      destino: `Ajuste: ${reconcileJustificativa.trim()}`,
+      autorizado: reconcileResponsavel.trim()
+    };
+
+    setBaixas(prev => {
+      const next = [newBaixa, ...prev];
+      localStorage.setItem('construmais_baixas', JSON.stringify(next));
+      return next;
+    });
+
+    setShowReconcileModal(false);
+    setShowReconcileSuccessScreen(true);
+    
+    // Clear states
+    const oldItem = reconcileItem;
+    const oldQty = newQty;
+    
+    setReconcileNewPhysicalQty('');
+    setReconcileJustificativa('');
+    setReconcileResponsavel('');
+
+    setTimeout(() => {
+      setShowReconcileSuccessScreen(false);
+      setReconcileItem(null);
+      setCurrentTab('estoque');
+      triggerToast(`Estoque reconciliado de ${oldItem.saldo} para ${oldQty} ${oldItem.unidade}!`, 'success');
+    }, 1800);
   };
 
   const handleSortToggle = (key: keyof Pedido | 'progress' | 'id_numeric') => {
@@ -526,6 +698,35 @@ export default function App() {
     }
   };
 
+  const handleInventorySortToggle = (key: 'obra' | 'insumo' | 'unidade' | 'recebido' | 'baixado' | 'saldo' | 'ultimaMovimentacao') => {
+    let newDirection: 'asc' | 'desc' | '' = 'asc';
+    if (inventorySortConfig.key === key) {
+      if (inventorySortConfig.direction === 'asc') {
+        newDirection = 'desc';
+      } else {
+        newDirection = '';
+      }
+    }
+    setInventorySortConfig({ key: newDirection ? key : '', direction: newDirection });
+    
+    if (newDirection === '') {
+      triggerToast('Ordenação do estoque desativada', 'info');
+    } else {
+      const orderLabel = newDirection === 'asc' ? 'Crescente' : 'Decrescente';
+      const keyLabels: Record<string, string> = {
+        obra: 'Obra / Centro de Custo',
+        insumo: 'Material / Insumo',
+        unidade: 'Unidade',
+        recebido: 'Entradas Acumuladas',
+        baixado: 'Baixas Registradas',
+        saldo: 'Saldo Físico Atual',
+        ultimaMovimentacao: 'Última Movimentação'
+      };
+      const label = keyLabels[key] || String(key);
+      triggerToast(`Ordenando estoque por ${label}: ${orderLabel}`, 'success');
+    }
+  };
+
 
   // Calculate Net Available Stock for each (Insumo + Obra)
   // Formula: Available = Sum(qtdRecebida from Pedidos with same insumo & obra) - Sum(quantidade from Baixas with same insumo & obra)
@@ -542,8 +743,13 @@ export default function App() {
         obraId?: string;
         fornecedor?: string;
         marca?: string;
+        codDetalhe?: string;
         descricaoDetalhe?: string;
         descricaoUnidade?: string;
+        ultimaMovimentacao?: string;
+        rawUltimaMovimentacao?: number;
+        dataUltimaEntrada?: string;
+        dataUltimaBaixa?: string;
       } 
     } = {};
 
@@ -563,8 +769,10 @@ export default function App() {
           obraId: p.obraId,
           fornecedor: p.fornecedor,
           marca: p.marca,
+          codDetalhe: p.codDetalhe,
           descricaoDetalhe: p.descricaoDetalhe,
-          descricaoUnidade: p.descricaoUnidade
+          descricaoUnidade: p.descricaoUnidade,
+          ultimaMovimentacao: '-'
         };
       }
       map[key].recebido += p.qtdRecebida;
@@ -573,6 +781,7 @@ export default function App() {
       // Keep last imported / updated data
       if (p.fornecedor) map[key].fornecedor = p.fornecedor;
       if (p.marca) map[key].marca = p.marca;
+      if (p.codDetalhe) map[key].codDetalhe = p.codDetalhe;
       if (p.descricaoDetalhe) map[key].descricaoDetalhe = p.descricaoDetalhe;
       if (p.descricaoUnidade) map[key].descricaoUnidade = p.descricaoUnidade;
       if (p.obraId) map[key].obraId = p.obraId;
@@ -590,11 +799,82 @@ export default function App() {
           baixado: 0, 
           saldo: 0, 
           unidade: b.unidade,
-          obraId: b.obraId
+          obraId: b.obraId,
+          ultimaMovimentacao: '-'
         };
       }
       map[key].baixado += b.quantidade;
       map[key].saldo -= b.quantidade;
+    });
+
+    // 3. Find latest movement date-time for each item
+    Object.keys(map).forEach((key) => {
+      const item = map[key];
+      let latestDate: Date | null = null;
+      let latestEntradaDate: Date | null = null;
+      let latestBaixaDate: Date | null = null;
+
+      // Check matching deliveries in pedidos
+      pedidos.forEach((p) => {
+        if (p.status === 'Cancelado') return;
+        if (p.qtdRecebida <= 0) return;
+        const matches = p.obra === item.obra && (p.codigo || '') === item.codigo && p.insumo === item.insumo;
+        if (matches) {
+          const d = parseDateTimeString(p.dataChegada || p.dataPedido);
+          if (d && (!latestDate || d > latestDate)) {
+            latestDate = d;
+          }
+          if (d && (!latestEntradaDate || d > latestEntradaDate)) {
+            latestEntradaDate = d;
+          }
+        }
+      });
+
+      // Check matching baixas
+      baixas.forEach((b) => {
+        const matches = b.obra === item.obra && (b.codigo || '') === item.codigo && b.insumo === item.insumo;
+        if (matches) {
+          const d = parseDateTimeString(b.data);
+          if (d && (!latestDate || d > latestDate)) {
+            latestDate = d;
+          }
+          if (d && (!latestBaixaDate || d > latestBaixaDate)) {
+            latestBaixaDate = d;
+          }
+        }
+      });
+
+      // Default fallback if no date found yet
+      if (!latestDate) {
+        pedidos.forEach((p) => {
+          const matches = p.obra === item.obra && (p.codigo || '') === item.codigo && p.insumo === item.insumo;
+          if (matches) {
+            const d = parseDateTimeString(p.dataPedido);
+            if (d && (!latestDate || d > latestDate)) {
+              latestDate = d;
+            }
+          }
+        });
+      }
+
+      // Default fallback if no entry date found yet
+      if (!latestEntradaDate) {
+        pedidos.forEach((p) => {
+          const matches = p.obra === item.obra && (p.codigo || '') === item.codigo && p.insumo === item.insumo;
+          if (matches) {
+            const d = parseDateTimeString(p.dataPedido);
+            if (d && (!latestEntradaDate || d > latestEntradaDate)) {
+              latestEntradaDate = d;
+            }
+          }
+        });
+      }
+
+      item.ultimaMovimentacao = latestDate ? formatDateTimeToISO(latestDate) : '-';
+      item.rawUltimaMovimentacao = latestDate ? latestDate.getTime() : 0;
+      
+      item.dataUltimaEntrada = latestEntradaDate ? formatDateTimeToISO(latestEntradaDate) : '-';
+      item.dataUltimaBaixa = latestBaixaDate ? formatDateTimeToISO(latestBaixaDate) : '-';
     });
 
     return Object.values(map);
@@ -693,7 +973,7 @@ export default function App() {
   }, [pedidos, selectedObra, searchQuery, statusFilter, sortConfig]);
 
   const filteredStock = useMemo(() => {
-    return stockInventory.filter((item) => {
+    let list = stockInventory.filter((item) => {
       const itemObra = item.obra || '';
       const matchObra = selectedObra === 'Todas as Obras' || itemObra === selectedObra;
       
@@ -708,7 +988,32 @@ export default function App() {
         
       return matchObra && matchSearch;
     });
-  }, [stockInventory, selectedObra, searchQuery]);
+
+    if (inventorySortConfig.key && inventorySortConfig.direction) {
+      list = [...list].sort((a, b) => {
+        let valA: any;
+        let valB: any;
+
+        const k = inventorySortConfig.key;
+        if (k === 'recebido' || k === 'baixado' || k === 'saldo') {
+          valA = Number(a[k]) || 0;
+          valB = Number(b[k]) || 0;
+        } else if (k === 'ultimaMovimentacao') {
+          valA = a.rawUltimaMovimentacao || 0;
+          valB = b.rawUltimaMovimentacao || 0;
+        } else {
+          valA = String(a[k as keyof typeof a] || '').toLowerCase();
+          valB = String(b[k as keyof typeof b] || '').toLowerCase();
+        }
+
+        if (valA < valB) return inventorySortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return inventorySortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return list;
+  }, [stockInventory, selectedObra, searchQuery, inventorySortConfig]);
 
   // Calculated Stats Indicators based on "selectedObra"
   const stats = useMemo(() => {
@@ -760,6 +1065,186 @@ export default function App() {
       .filter((item) => item.obra === newWithdrawObra && item.saldo > 0)
       .map((item) => ({ insumo: item.insumo, saldo: item.saldo, unidade: item.unidade }));
   }, [stockInventory, newWithdrawObra]);
+
+  // Dynamic received materials efficiency statistics for the real/actual obras
+  const obrasRecebimentoStats = useMemo(() => {
+    const statsMap: { [obra: string]: { recebido: number; solicitado: number } } = {};
+    
+    // Initialize for all active obras
+    obras.forEach(o => {
+      statsMap[o.nome] = { recebido: 0, solicitado: 0 };
+    });
+
+    pedidos.forEach(p => {
+      if (p.status === 'Cancelado') return;
+      if (!statsMap[p.obra]) {
+        statsMap[p.obra] = { recebido: 0, solicitado: 0 };
+      }
+      statsMap[p.obra].recebido += p.qtdRecebida || 0;
+      statsMap[p.obra].solicitado += p.qtdSolicitada || 0;
+    });
+
+    return Object.keys(statsMap).map(obraName => {
+      const { recebido, solicitado } = statsMap[obraName];
+      const percent = solicitado > 0 ? Math.round((recebido / solicitado) * 100) : 0;
+      return {
+        name: obraName,
+        percent,
+        recebido,
+        solicitado
+      };
+    });
+  }, [pedidos, obras]);
+
+  // Unified list of all entries (Entradas) and withdrawals (Saídas)
+  const unifiedMovements = useMemo(() => {
+    const list: any[] = [];
+    
+    // 1. Add received entries from pedidos
+    pedidos.forEach((p) => {
+      if (p.status === 'Cancelado') return;
+      if (p.qtdRecebida > 0) {
+        list.push({
+          id: p.id,
+          codigo: p.codigo || '',
+          insumo: p.insumo,
+          obra: p.obra,
+          tipo: 'ENTRADA',
+          quantidade: p.qtdRecebida,
+          unidade: p.unidade,
+          documento: p.notaFiscal ? `NF-${p.notaFiscal} (PED-${p.id})` : `NF-Recebimento (PED-${p.id})`,
+          responsavel: p.responsavelRecebimento || 'Almoxarife / Portaria',
+          data: p.dataChegada || p.dataPedido,
+          fornecedor: p.fornecedor || '-',
+          isEstornoable: true,
+          isPedidoType: true,
+          rawTimestamp: parseDateTimeString(p.dataChegada || p.dataPedido)?.getTime() || 0
+        });
+      }
+    });
+
+    // 2. Add withdrawals from baixas
+    baixas.forEach((b) => {
+      list.push({
+        id: b.id,
+        codigo: b.codigo || '',
+        insumo: b.insumo,
+        obra: b.obra,
+        tipo: 'SAIDA',
+        quantidade: b.quantidade,
+        unidade: b.unidade,
+        documento: b.destino || 'Retirada de Obra',
+        responsavel: b.colaborador || 'Mestre de Obras',
+        data: b.data,
+        fornecedor: '-',
+        isEstornoable: true,
+        isPedidoType: false,
+        rawTimestamp: parseDateTimeString(b.data)?.getTime() || 0
+      });
+    });
+
+    // Sort by descending timestamp (latest first)
+    return list.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+  }, [pedidos, baixas]);
+
+  // Distinct lists extracted dynamically from data for filter select-boxes
+  const reportUsersList = useMemo(() => {
+    const set = new Set<string>();
+    usuarios.forEach(u => { if (u.nome) set.add(u.nome.trim()); });
+    unifiedMovements.forEach(m => { if (m.responsavel) set.add(m.responsavel.trim()); });
+    return Array.from(set).sort();
+  }, [usuarios, unifiedMovements]);
+
+  const reportMaterialsList = useMemo(() => {
+    const set = new Set<string>();
+    unifiedMovements.forEach(m => { if (m.insumo) set.add(m.insumo.trim()); });
+    return Array.from(set).sort();
+  }, [unifiedMovements]);
+
+  const reportSuppliersList = useMemo(() => {
+    const set = new Set<string>();
+    pedidos.forEach(p => { if (p.fornecedor) set.add(p.fornecedor.trim()); });
+    return Array.from(set).sort();
+  }, [pedidos]);
+
+  // Dynamically filtered movements based on selected user filters
+  const filteredMovements = useMemo(() => {
+    return unifiedMovements.filter((m) => {
+      // 1. Obra filter
+      if (reportSelectedObra !== 'Todas as Obras' && m.obra !== reportSelectedObra) {
+        return false;
+      }
+      // 2. User/Responsável filter
+      if (reportSelectedUser !== 'Todos os Usuários' && m.responsavel.trim() !== reportSelectedUser) {
+        return false;
+      }
+      // 3. Movement Type filter
+      if (reportSelectedType !== 'Ambos') {
+        if (reportSelectedType === 'Entrada' && m.tipo !== 'ENTRADA') return false;
+        if (reportSelectedType === 'Saída' && m.tipo !== 'SAIDA') return false;
+      }
+      // 4. Material/Insumo filter
+      if (reportSelectedMaterial !== 'Todos os Materiais' && m.insumo.trim() !== reportSelectedMaterial) {
+        return false;
+      }
+      // 5. Supplier/Fornecedor filter
+      if (reportSelectedSupplier !== 'Todos os Fornecedores' && m.fornecedor.trim() !== reportSelectedSupplier) {
+        return false;
+      }
+      // 6. Date period filter (between start date and end date)
+      if (reportStartDate) {
+        const itemDate = parseDateTimeString(m.data);
+        if (itemDate) {
+          const startDate = new Date(reportStartDate + 'T00:00:00');
+          if (itemDate < startDate) return false;
+        }
+      }
+      if (reportEndDate) {
+        const itemDate = parseDateTimeString(m.data);
+        if (itemDate) {
+          const endDate = new Date(reportEndDate + 'T23:59:59');
+          if (itemDate > endDate) return false;
+        }
+      }
+      return true;
+    });
+  }, [
+    unifiedMovements,
+    reportSelectedObra,
+    reportSelectedUser,
+    reportSelectedType,
+    reportSelectedMaterial,
+    reportSelectedSupplier,
+    reportStartDate,
+    reportEndDate
+  ]);
+
+  // Handler for estorno/deletion of movements from diary
+  const handleEstornoMovement = (item: any) => {
+    if (item.tipo === 'SAIDA') {
+      executeGuardedAction('dar_baixa', 'Estornar Movimentação de Saída', () => {
+        setBaixas(prev => prev.filter(b => b.id !== item.id));
+        triggerToast('Lançamento de saída estornado com sucesso! Saldo reorganizado.', 'success');
+      });
+    } else {
+      executeGuardedAction('receber_mercadoria', 'Estornar Recebimento de Entrada', () => {
+        setPedidos(prev => prev.map(p => {
+          if (p.id === item.id && (p.codigo || '') === item.codigo) {
+            return {
+              ...p,
+              qtdRecebida: 0,
+              status: 'Pendente',
+              dataChegada: undefined,
+              responsavelRecebimento: undefined,
+              notaFiscal: undefined
+            };
+          }
+          return p;
+        }));
+        triggerToast('Lançamento de entrada estornado! Quantidade deduzida do estoque.', 'success');
+      });
+    }
+  };
 
 
   // Permission validator helper
@@ -853,8 +1338,14 @@ export default function App() {
         triggerToast('Informe o insumo a ser retirado.', 'warn');
         return;
       }
-      if (!newWithdrawColab.trim()) {
-        triggerToast('Digite o nome do colaborador responsável pela retira.', 'warn');
+
+      if (!newWithdrawDestino.trim()) {
+        triggerToast('O preenchimento do campo "4. Destino de Aplicação / Local" é obrigatório.', 'warn');
+        return;
+      }
+
+      if (!newWithdrawAutorizado.trim()) {
+        triggerToast('O preenchimento do campo "5. Autorizado por" é obrigatório.', 'warn');
         return;
       }
 
@@ -862,8 +1353,18 @@ export default function App() {
         (item) => item.obra === newWithdrawObra && item.insumo === newWithdrawInsumo
       );
 
-      if (!targetStockItem || targetStockItem.saldo < newWithdrawQtd) {
-        triggerToast('Saldo insuficiente em estoque local para realizar esta baixa.', 'warn');
+      if (!targetStockItem) {
+        triggerToast('Material não encontrado no estoque.', 'warn');
+        return;
+      }
+
+      if (newWithdrawQtd > targetStockItem.saldo) {
+        triggerToast(`A quantidade consumida (${newWithdrawQtd}) não pode ser maior que o saldo disponível (${targetStockItem.saldo}).`, 'warn');
+        return;
+      }
+
+      if (newWithdrawQtd <= 0) {
+        triggerToast('A quantidade consumida deve ser maior que zero.', 'warn');
         return;
       }
 
@@ -877,16 +1378,29 @@ export default function App() {
         obraId: matchedObra ? matchedObra.id : undefined,
         quantidade: newWithdrawQtd,
         unidade: targetStockItem.unidade,
-        colaborador: newWithdrawColab.trim(),
-        data: new Date().toLocaleString('pt-BR', { hour12: false }).replace(',', '')
+        colaborador: newWithdrawAutorizado.trim(),
+        data: new Date().toLocaleString('pt-BR', { hour12: false }).replace(',', ''),
+        destino: newWithdrawDestino.trim(),
+        autorizado: newWithdrawAutorizado.trim()
       };
 
       setBaixas([newBaixa, ...baixas]);
       setMovementsCount(prev => prev + 1);
       setShowWithdrawModal(false);
-      setNewWithdrawColab('');
-      setNewWithdrawInsumo('');
-      triggerToast(`Baixa ${randomId} de ${newWithdrawQtd} ${targetStockItem.unidade} de ${newWithdrawInsumo} registrada com sucesso!`, 'success');
+      
+      // Show center screen overlay "Baixa realizada"
+      setShowWithdrawSuccessScreen(true);
+      
+      setTimeout(() => {
+        setShowWithdrawSuccessScreen(false);
+        setCurrentTab('estoque');
+        
+        // Reset states
+        setNewWithdrawColab('');
+        setNewWithdrawDestino('');
+        setNewWithdrawAutorizado('');
+        setNewWithdrawInsumo('');
+      }, 1800);
     });
   };
 
@@ -1987,16 +2501,31 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
     setNewWithdrawInsumo('');
   };
 
-  // Mock Export CSV logic
+  // Export CSV of filtered unified movements (Diário de Movimentações)
   const handleExportCSV = () => {
-    const csvContent = "ID,Insumo,Obra,Solicitado,Recebido,Unidade,Status\n" + 
-      pedidos.map(p => `${p.id},${p.insumo},${p.obra},${p.qtdSolicitada},${p.qtdRecebida},${p.unidade},${p.status}`).join("\n");
+    if (filteredMovements.length === 0) {
+      triggerToast('Nenhum dado filtrado para exportação.', 'warn');
+      return;
+    }
+
+    const headers = "Data/Hora,Tipo,Obra Destino,Insumo,Quantidade,Unidade,Documento/Justificativa,Responsavel\n";
+    const csvRows = filteredMovements.map(m => {
+      // Safe string escaping for commas or quotes
+      const safeInsumo = `"${m.insumo.replace(/"/g, '""')}"`;
+      const safeObra = `"${m.obra.replace(/"/g, '""')}"`;
+      const safeDoc = `"${m.documento.replace(/"/g, '""')}"`;
+      const safeResp = `"${m.responsavel.replace(/"/g, '""')}"`;
+      return `${m.data},${m.tipo},${safeObra},${safeInsumo},${m.quantidade},${m.unidade},${safeDoc},${safeResp}`;
+    });
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = headers + csvRows.join("\n");
+    
+    // Inject UTF-8 BOM so Excel opens accented characters correctly
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `relatorio_estoque_${selectedObra.replace(/\s+/g, '_')}.csv`);
+    link.setAttribute("download", `diario_movimentacoes_filtrado.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2292,7 +2821,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               </div>
             </div>
             
-            <span className="text-slate-700 font-serif italic">|</span>
+            <span className="text-slate-700 font-sans italic">|</span>
             <div className="text-[10px] text-slate-500 font-medium uppercase tracking-widest hidden sm:block">
               Base atualizada em {lastImportDate} • Movimentações: {movementsCount}
             </div>
@@ -2414,7 +2943,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard-statistics-container">
                 
                 {/* Left Card: Pedidos Statistics Chart & KPI */}
-                <div className="lg:col-span-7 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col justify-between" id="chart-pedidos-stats">
+                <div className="lg:col-span-6 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col justify-between" id="chart-pedidos-stats">
                   <div>
                     <div className="flex justify-between items-start mb-6">
                       <div>
@@ -2498,36 +3027,99 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   </div>
                 </div>
 
-                {/* Right Card: Critical Stock List (<15%) */}
-                <div className="lg:col-span-5 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col" id="chart-insumos-criticos">
+                {/* Right Card: Real Obras Received Material Progress Chart */}
+                <div className="lg:col-span-6 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col justify-between" id="chart-obras-recebimento">
+                  <div>
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-base font-sans font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                          <Layers size={16} className="text-blue-400" />
+                          Recebimento por Obra (Real)
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Progresso ponderado de materiais recebidos págos (Obras Importadas)</p>
+                      </div>
+                      <span className="text-[10px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-full">
+                        Estatística Dinâmica
+                      </span>
+                    </div>
+
+                    {/* Dynamic Real Obras Bar Chart */}
+                    <div className="space-y-4 pt-1" id="real-works-received-statistics" style={{ minHeight: '260px' }}>
+                      {obrasRecebimentoStats.length === 0 ? (
+                        <div className="h-[230px] flex flex-col items-center justify-center text-slate-500 bg-[#0F1115] border border-slate-800 rounded-lg">
+                          <ClipboardList size={32} className="text-slate-700 mb-2" />
+                          <p className="text-xs">Não há dados de obras reais cadastrados.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3.5 max-h-[250px] overflow-y-auto pr-1">
+                          {obrasRecebimentoStats.map((item) => {
+                            const percent = item.percent;
+                            const barColor = percent >= 75 ? 'bg-emerald-500' : percent >= 45 ? 'bg-amber-500' : 'bg-blue-500';
+                            return (
+                              <div key={item.name} className="space-y-1.5 p-2.5 rounded-lg bg-[#0F1115] border border-slate-800/80 hover:border-slate-700 transition-all">
+                                <div className="flex justify-between text-xs font-sans text-slate-300">
+                                  <span className="font-extrabold truncate max-w-[170px] sm:max-w-[220px]">{item.name}</span>
+                                  <span className="font-bold shrink-0">{percent}% Recebido ({item.recebido} un)</span>
+                                </div>
+                                <div className="w-full bg-slate-950 rounded-xl h-2 overflow-hidden border border-slate-800/50">
+                                  <div className={`h-full ${barColor} rounded-xl transition-all duration-500`} style={{ width: `${percent}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer Detail Card */}
+                  <div className="bg-[#1C2028] border border-slate-800 p-4.5 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-lg">
+                        <MapPin size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-200">Total de Instalações</h4>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Canteiros rastreados no sistema de almoxarifado local.</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-0">
+                      <span className="text-2.5xl font-black font-sans text-blue-400">{obras.length}</span>
+                      <span className="text-[10.5px] text-slate-400 font-mono">Obras Ativas</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Critical Stock List (<15%) spanning 12 columns */}
+                <div className="lg:col-span-12 bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col" id="chart-insumos-criticos">
                   <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
                     <h2 className="text-base font-sans font-bold text-white uppercase tracking-tight flex items-center gap-2">
                       <AlertTriangle size={16} className="text-rose-500" />
                       Alerta: Estoque Crítico
                     </h2>
-                    <span className="text-[10px] text-slate-500 font-mono">Saldo &lt; 15%</span>
+                    <span className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-wider">Saldo &lt; 15%</span>
                   </div>
 
                   <p className="text-xs text-slate-400 mb-4 leading-relaxed">
                     Lista de insumos ativos recebidos que estão com saldo de estoque baixo em relação ao fornecido, necessitando de reabastecimento.
                   </p>
 
-                  <div className="flex-1 overflow-y-auto max-h-[350px] pr-1 space-y-3">
-                    {dashboardCriticalStockList.length === 0 ? (
-                      <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center p-6 bg-[#0F1115] border border-dashed border-slate-800 rounded-lg">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
-                          <CheckCircle size={20} />
-                        </div>
-                        <p className="text-xs font-bold text-white">Nenhum Insumo Crítico</p>
-                        <p className="text-[10.5px] text-slate-500 mt-1 max-w-[200px]">Todos os insumos possuem saldo estável ou acima de 15% do recebido.</p>
+                  {dashboardCriticalStockList.length === 0 ? (
+                    <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-center p-6 bg-[#0F1115] border border-dashed border-slate-800 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
+                        <CheckCircle size={20} />
                       </div>
-                    ) : (
-                      dashboardCriticalStockList.map((item) => {
+                      <p className="text-xs font-bold text-white">Nenhum Insumo Crítico</p>
+                      <p className="text-[10.5px] text-slate-500 mt-1 max-w-[400px]">Todos os insumos possuem saldo estável ou acima de 15% do recebido.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto max-h-[350px]">
+                      {dashboardCriticalStockList.map((item) => {
                         const ratio = item.recebido > 0 ? (item.saldo / item.recebido) : 0;
                         const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
                         
                         return (
-                          <div key={`${item.obra}:::${item.codigo}:::${item.insumo}`} className="p-3 bg-[#0F1115] border border-slate-800 rounded-lg hover:border-slate-700 transition-all flex flex-col gap-2 group notranslate" translate="no">
+                          <div key={`${item.obra}:::${item.codigo}:::${item.insumo}`} className="p-3 bg-[#0F1115] border border-slate-800 rounded-lg hover:border-slate-700 transition-all flex flex-col justify-between gap-2.5 group notranslate" translate="no">
                             <div className="flex justify-between items-start">
                               <div className="max-w-[70%]">
                                 <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">{item.insumo}</h4>
@@ -2536,7 +3128,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   {selectedObra === 'Todas as Obras' && (
                                     <>
                                       <span className="text-[#3b82f6]/40">•</span>
-                                      <span className="text-[9.5px] text-slate-400 font-semibold truncate max-w-[120px]">{item.obra}</span>
+                                      <span className="text-[9.5px] text-slate-450 font-semibold truncate max-w-[120px]">{item.obra}</span>
                                     </>
                                   )}
                                 </div>
@@ -2562,9 +3154,9 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                             </div>
                           </div>
                         );
-                      })
-                    )}
-                  </div>
+                      })}
+                    </div>
+                  )}
                   
                   {/* Insight and Recommendations */}
                   <div className="mt-4 p-3 bg-rose-500/5 border border-rose-500/10 rounded-lg text-[11px] text-rose-400 flex items-start gap-2">
@@ -2586,7 +3178,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             <div className="space-y-6" id="pedidos-tab-view">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-serif font-semibold text-white">Gestão Integrada de Pedidos</h2>
+                  <h2 className="text-xl font-sans font-extrabold text-white">Gestão Integrada de Pedidos</h2>
                   <p className="text-sm text-slate-400 mt-1">Acompanhe, filtre e configure o status das compras ativas de materiais e ferragens para as obras.</p>
                 </div>
                 <div className="flex flex-wrap gap-2.5">
@@ -2712,7 +3304,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               {pedidosViewMode === 'table' ? (
                 <div className="overflow-x-auto border border-slate-800 rounded-xl bg-[#161920]">
                   <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                    <thead className="bg-[#1C2028] text-slate-400 text-[10.5px] uppercase font-mono tracking-wider border-b border-slate-800">
+                    <thead className="bg-[#1C2028] text-slate-400 text-[10px] uppercase font-sans font-semibold tracking-wider border-b border-slate-800">
                       <tr>
                         {/* PEDIDO DE COMPRA / EMISSÃO */}
                         <th 
@@ -2721,7 +3313,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           title="Clique para ordenar por Pedido de Compra"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Pedido de Compra / Emissão</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Pedido de Compra / Emissão</span>
                             <span className="inline-flex shrink-0">
                               {sortConfig.key === 'id_numeric' ? (
                                 sortConfig.direction === 'asc' ? (
@@ -2743,7 +3335,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           title="Clique para ordenar por Obra"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Obra / C.C</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Obra / C.C</span>
                             <span className="inline-flex shrink-0">
                               {sortConfig.key === 'obra' ? (
                                 sortConfig.direction === 'asc' ? (
@@ -2765,7 +3357,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           title="Clique para ordenar por Fornecedor"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Fornecedor / Comprador</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Fornecedor / Comprador</span>
                             <span className="inline-flex shrink-0">
                               {sortConfig.key === 'fornecedor' ? (
                                 sortConfig.direction === 'asc' ? (
@@ -2787,7 +3379,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           title="Clique para ordenar por Insumo"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Insumo / Descrição</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Insumo / Descrição</span>
                             <span className="inline-flex shrink-0">
                               {sortConfig.key === 'insumo' ? (
                                 sortConfig.direction === 'asc' ? (
@@ -2809,7 +3401,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           title="Clique para ordenar por Quantidade Pedida / Recebida"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Pedido / Recebido</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Pedido / Recebido</span>
                             <span className="inline-flex shrink-0 font-sans normal-case">
                               {sortConfig.key === 'progress' ? (
                                 sortConfig.direction === 'asc' ? (
@@ -2831,7 +3423,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           title="Clique para ordenar por Status Logístico"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider">Status Logístico</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Status Logístico</span>
                             <span className="inline-flex shrink-0">
                               {sortConfig.key === 'status' ? (
                                 sortConfig.direction === 'asc' ? (
@@ -2846,8 +3438,8 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                           </div>
                         </th>
 
-                        <th className="px-4 py-3.5 text-right text-[10.5px] uppercase font-bold tracking-wider text-slate-450 select-none">
-                          <span className="text-[10px] text-slate-350 font-semibold uppercase tracking-wider block">Painel de Ações</span>
+                        <th className="px-4 py-3.5 text-right font-sans font-semibold text-[10px] uppercase tracking-wider text-slate-400 select-none">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Painel de Ações</span>
                         </th>
                       </tr>
                     </thead>
@@ -3111,7 +3703,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                             </div>
 
                             {p.descricaoDetalhe && (
-                              <div className="text-xs text-slate-450 italic font-serif leading-relaxed mb-4 bg-slate-900/40 p-2 rounded border border-slate-800/40">
+                              <div className="text-xs text-slate-450 italic font-sans leading-relaxed mb-4 bg-slate-900/40 p-2 rounded border border-slate-800/40">
                                 “{p.descricaoDetalhe}” {p.codDetalhe && <span className="font-mono text-[9px] text-slate-500">[{p.codDetalhe}]</span>}
                               </div>
                             )}
@@ -3191,7 +3783,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             <div className="space-y-6" id="estoque-tab-view">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-serif font-semibold text-white">Disponibilidade e Saldos de Estoque</h2>
+                  <h2 className="text-xl font-sans font-extrabold text-white">Disponibilidade e Saldos de Estoque</h2>
                   <p className="text-sm text-slate-400 mt-0.5">Visão do inventário em lista considerando as entradas recebidas menos as baixas locais em obra.</p>
                 </div>
               </div>
@@ -3224,92 +3816,265 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse" id="inventory-list-table">
                     <thead>
-                      <tr className="text-slate-450 font-medium border-b border-slate-800 bg-[#12151C] text-xs uppercase tracking-wider text-slate-400">
-                        <th className="px-6 py-3.5">Código</th>
-                        <th className="px-6 py-3.5">Nome do Insumo / Obra</th>
-                        <th className="px-6 py-3.5 text-right">Saldo Disponível</th>
-                        <th className="px-6 py-3.5 text-right">Recebido Total</th>
-                        <th className="px-6 py-3.5 text-right">Utilizado (Baixas)</th>
-                        <th className="px-6 py-3.5 text-center min-w-[120px]">Consumo</th>
-                        <th className="px-6 py-3.5 text-center">Ações</th>
+                      <tr className="text-slate-450 font-semibold border-b border-slate-800 bg-[#12151C] text-[10px] uppercase tracking-wider">
+                        {/* CENTRO DE CUSTO / OBRA */}
+                        <th 
+                          className="px-6 py-3.5 text-left text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleInventorySortToggle('obra')}
+                          title="Clique para ordenar por Centro de Custo / Obra"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span>Centro de Custo / Obra</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'obra' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* MATERIAL / INSUMO */}
+                        <th 
+                          className="px-6 py-3.5 text-left text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleInventorySortToggle('insumo')}
+                          title="Clique para ordenar por Material / Insumo"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span>Material / Insumo</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'insumo' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* UNIDADE */}
+                        <th 
+                          className="px-6 py-3.5 text-center text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all ml-auto"
+                          onClick={() => handleInventorySortToggle('unidade')}
+                          title="Clique para ordenar por Unidade"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Unidade</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'unidade' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* ENTRADAS ACUMULADAS (+) */}
+                        <th 
+                          className="px-6 py-3.5 text-center text-[#10B981] cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleInventorySortToggle('recebido')}
+                          title="Clique para ordenar por Entradas Acumuladas"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Entradas Acumuladas (+)</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'recebido' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-[#10B981]/50 group-hover:text-[#10B981] transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* BAIXAS REGISTRADAS (-) */}
+                        <th 
+                          className="px-6 py-3.5 text-center text-[#F43F5E] cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleInventorySortToggle('baixado')}
+                          title="Clique para ordenar por Baixas Registradas"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Baixas Registradas (-)</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'baixado' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-[#F43F5E]/50 group-hover:text-[#F43F5E] transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* SALDO FÍSICO ATUAL */}
+                        <th 
+                          className="px-6 py-3.5 text-center text-[#FFC800] cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleInventorySortToggle('saldo')}
+                          title="Clique para ordenar por Saldo Físico"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Saldo Físico Atual</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'saldo' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-[#FFC800]/50 group-hover:text-[#FFC800] transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* ÚLTIMA MOVIMENTAÇÃO */}
+                        <th 
+                          className="px-6 py-3.5 text-center text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
+                          onClick={() => handleInventorySortToggle('ultimaMovimentacao')}
+                          title="Clique para ordenar por Última Movimentação"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Última Movimentação</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'ultimaMovimentacao' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* AJUSTES / INVENTÁRIO */}
+                        <th className="px-6 py-3.5 text-center text-slate-400 font-semibold select-none">
+                          Ajustes / Inventário
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/85">
                       {filteredStock.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center py-12 text-slate-500">
+                          <td colSpan={8} className="text-center py-12 text-slate-500">
                             <Layers size={36} className="mx-auto text-slate-700 mb-2.5" />
                             Nenhum insumo encontrado no estoque com os filtros aplicados.
                           </td>
                         </tr>
                       ) : (
                         filteredStock.map((item, idx) => {
-                          const percent = Math.min(100, Math.round((item.baixado / (item.recebido || 1)) * 100));
-                          const isCritical = item.recebido > 0 && item.saldo <= item.recebido * 0.15;
-                          
                           return (
-                            <tr key={idx} className="hover:bg-slate-800/20 transition-colors">
-                              {/* Código do Insumo */}
-                              <td className="px-6 py-4 font-mono text-xs font-semibold">
-                                <span className="bg-zinc-800/80 text-yellow-500 px-2.5 py-1 rounded border border-yellow-500/10 shadow-sm">
-                                  {item.codigo || '-'}
-                                </span>
+                            <tr key={idx} className="hover:bg-slate-800/20 transition-colors border-b border-slate-800/40">
+                              {/* 1. Centro de Custo / Obra */}
+                              <td className="px-6 py-2">
+                                <div className="text-white font-bold text-sm tracking-wide uppercase">{item.obra}</div>
                               </td>
 
-                              {/* Insumo Name and Site */}
-                              <td className="px-6 py-4">
-                                <div className="text-white font-medium text-sm">{item.insumo}</div>
-                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                  <MapPin size={10} className="text-slate-600" />
-                                  {item.obra}
-                                </div>
-                              </td>
-
-                              {/* Saldo Disponível */}
-                              <td className="px-6 py-4 text-right font-serif">
-                                <span className={`text-sm font-semibold tracking-wide ${
-                                  item.saldo <= 0 ? 'text-red-400' :
-                                  isCritical ? 'text-rose-400' : 'text-emerald-400'
-                                }`}>
-                                  {item.saldo.toLocaleString('pt-BR')}
-                                </span>
-                                <span className="text-xs text-slate-500 ml-1 font-sans">{item.unidade}</span>
-                                {isCritical && item.saldo > 0 && (
-                                  <span className="block text-[9px] uppercase tracking-wider text-rose-400 font-sans mt-0.5 font-bold">Estoque Crítico</span>
+                              {/* 2. Material / Insumo */}
+                              <td className="px-6 py-2">
+                                <div className="text-white font-bold text-sm tracking-wide uppercase">{item.insumo}</div>
+                                {(item.codDetalhe || item.descricaoDetalhe) && (
+                                  <div className="mt-0.5 text-xs text-slate-400 max-w-sm font-sans flex items-center gap-1.5 leading-tight">
+                                    {item.codDetalhe && item.descricaoDetalhe ? (
+                                      <>
+                                        <span className="font-mono font-semibold text-slate-350">{item.codDetalhe}</span>
+                                        <span className="text-slate-500">-</span>
+                                        <span className="text-slate-400 font-medium">{item.descricaoDetalhe}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        {item.codDetalhe && <span className="font-mono font-semibold text-slate-350">{item.codDetalhe}</span>}
+                                        {item.descricaoDetalhe && <span className="text-slate-400 font-medium">{item.descricaoDetalhe}</span>}
+                                      </>
+                                    )}
+                                  </div>
                                 )}
                               </td>
 
-                              {/* Recebido Total */}
-                              <td className="px-6 py-4 text-right text-slate-300 font-medium">
-                                {item.recebido.toLocaleString('pt-BR')} <span className="text-xs text-slate-500">{item.unidade}</span>
+                              {/* 3. Unidade */}
+                              <td className="px-6 py-2 text-center font-bold text-xs uppercase text-slate-400 font-sans">
+                                {item.unidade || '-'}
                               </td>
 
-                              {/* Utilizado (Baixas) */}
-                              <td className="px-6 py-4 text-right text-orange-400/90 font-medium">
-                                {item.baixado.toLocaleString('pt-BR')} <span className="text-xs text-slate-500">{item.unidade}</span>
-                              </td>
-
-                              {/* Consumo Bar */}
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2 max-w-[150px] mx-auto">
-                                  <div className="flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full ${
-                                        percent >= 90 ? 'bg-rose-500' :
-                                        percent >= 50 ? 'bg-amber-500' : 'bg-blue-400'
-                                      }`}
-                                      style={{ width: `${percent}%` }}
-                                    ></div>
-                                  </div>
-                                  <span className="text-[10px] font-mono text-slate-400 w-8 text-right">
-                                    {percent}%
-                                  </span>
+                              {/* 4. Entradas Acumuladas */}
+                              <td className="px-6 py-2 text-center font-sans">
+                                <div className="text-[#10B981] font-extrabold text-base">
+                                  {item.recebido.toLocaleString('pt-BR')}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
+                                  {item.dataUltimaEntrada && item.dataUltimaEntrada !== '-' ? (
+                                    item.dataUltimaEntrada
+                                  ) : (
+                                    '-'
+                                  )}
                                 </div>
                               </td>
 
-                              {/* Ações */}
-                              <td className="px-6 py-4 text-center">
-                                {item.saldo > 0 ? (
+                              {/* 5. Baixas Registradas */}
+                              <td className="px-6 py-2 text-center font-sans">
+                                <div className="text-[#F43F5E] font-extrabold text-base">
+                                  {item.baixado.toLocaleString('pt-BR')}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
+                                  {item.dataUltimaBaixa && item.dataUltimaBaixa !== '-' ? (
+                                    item.dataUltimaBaixa
+                                  ) : (
+                                    '-'
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* 6. Saldo Físico Atual */}
+                              <td className="px-6 py-2 text-center">
+                                <div className="inline-block border border-[#FFC800]/40 rounded-lg text-[#FFC800] bg-[#FFC800]/5 px-3 py-1 font-black text-sm tracking-wider font-mono min-w-[70px]">
+                                  {item.saldo.toLocaleString('pt-BR')}
+                                </div>
+                              </td>
+
+                              {/* 7. Última Movimentação */}
+                              <td className="px-6 py-2 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
+                                {item.ultimaMovimentacao || '-'}
+                              </td>
+
+                              {/* 8. Ajustes / Inventário */}
+                              <td className="px-6 py-2 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setReconcileItem(item);
+                                      setReconcileNewPhysicalQty(item.saldo);
+                                      setReconcileJustificativa('');
+                                      setReconcileResponsavel('');
+                                      setShowReconcileModal(true);
+                                    }}
+                                    className="px-3.5 py-1.5 bg-transparent hover:bg-[#FFC800]/5 border border-[#FFC800]/30 hover:border-[#FFC800] text-[#FFC800] text-[10px] font-black rounded uppercase tracking-wider transition-colors inline-flex items-center gap-1"
+                                  >
+                                    Reconciliar Saldo
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setNewWithdrawObra(item.obra);
@@ -3317,13 +4082,11 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                       setNewWithdrawQtd(Math.min(10, item.saldo));
                                       setShowWithdrawModal(true);
                                     }}
-                                    className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-900 font-bold rounded text-xs transition-colors flex items-center gap-1.5 mx-auto"
+                                    className="px-3.5 py-1.5 bg-[#F43F5E] hover:bg-rose-500 text-white text-[10px] font-black rounded uppercase tracking-wider transition-colors inline-flex items-center gap-1"
                                   >
-                                    <TrendingDown size={12} className="rotate-180 text-black" /> Dar Baixa
+                                    Baixar Consumo
                                   </button>
-                                ) : (
-                                  <span className="text-xs text-slate-600 italic">Sem Saldo</span>
-                                )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -3338,137 +4101,278 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
           {/* VIEW TAB 4: ADVANCED REPORTS & WITHDRAWAL LOGS */}
           {currentTab === 'relatorios' && (
-            <div className="space-y-6" id="reports-tab-view">
+            <div className="space-y-6 animate-in fade-in duration-200" id="reports-tab-view">
               
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h2 className="text-xl font-serif font-semibold text-white">Relatórios e Registro de Baixas</h2>
-                  <p className="text-sm text-slate-400 mt-1">Inspeção detalhada de consumo de insumos na ponta, perdas estimadas e logs de retiradas.</p>
+                  <h2 className="text-xl font-sans font-extrabold text-white">Relatórios e Diários de Obras</h2>
+                  <p className="text-sm text-slate-400 mt-1">Gere relatórios customizados, valide consumos físicos e filtre históricos consolidados em tempo real.</p>
                 </div>
                 <button
                   onClick={handleExportCSV}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-sm font-semibold border border-slate-700 transition-all flex items-center gap-2 self-start"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-sm font-semibold border border-slate-705 transition-all flex items-center gap-2 self-start cursor-pointer shadow-md"
                 >
-                  <FileDown size={16} /> Exportar Planilha Completa
+                  <FileDown size={15} className="text-emerald-400" /> Exportar Planilha Filtrada
                 </button>
               </div>
 
-              {/* Minimalist analytics graphical representation */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Advanced Interactive Filter Box */}
+              <div className="bg-[#161920] border border-slate-800 rounded-xl p-5" id="report-filters-panel">
+                <div className="flex items-center gap-2 mb-4 text-white">
+                  <Filter size={16} className="text-emerald-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider">Painel Dinâmico de Filtros do Relatório</h3>
+                </div>
                 
-                {/* SVG Mock Chart card */}
-                <div className="bg-[#161920] border border-slate-800 rounded-xl p-6 lg:col-span-2">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Distribuição do Recebimento de Materiais</h3>
-                    <span className="text-xs text-slate-500">Saldos Globais por Obra</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+                  
+                  {/* 1. Start Date */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">De (Período):</label>
+                    <input
+                      type="date"
+                      value={reportStartDate}
+                      onChange={(e) => setReportStartDate(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    />
                   </div>
 
-                  {/* Simulated full Responsive SVG Chart */}
-                  <div className="h-60 flex flex-col justify-end gap-3 pt-6" id="mock-chart-canvas">
-                    
-                    {/* Alvorada Bar */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Residencial Alvorada</span>
-                        <span>71% Recebido</span>
-                      </div>
-                      <div className="w-full bg-[#0F1115] rounded-lg h-3 overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-lg" style={{ width: '71%' }}></div>
-                      </div>
-                    </div>
-
-                    {/* Infinito Bar */}
-                    <div className="space-y-1 mt-2">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Torre Infinito</span>
-                        <span>42% Recebido</span>
-                      </div>
-                      <div className="w-full bg-[#0F1115] rounded-lg h-3 overflow-hidden">
-                        <div className="h-full bg-amber-500 rounded-lg" style={{ width: '42%' }}></div>
-                      </div>
-                    </div>
-
-                    {/* Hospitalar Bar */}
-                    <div className="space-y-1 mt-2">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Complexo Hospitalar</span>
-                        <span>67% Recebido</span>
-                      </div>
-                      <div className="w-full bg-[#0F1115] rounded-lg h-3 overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-lg" style={{ width: '67%' }}></div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between text-[10px] text-slate-500 pt-3 border-t border-slate-800/80">
-                      <span>0% Solicitado</span>
-                      <span>25%</span>
-                      <span>50%</span>
-                      <span>75%</span>
-                      <span>100% Entregue</span>
-                    </div>
-
+                  {/* 2. End Date */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">Até (Período):</label>
+                    <input
+                      type="date"
+                      value={reportEndDate}
+                      onChange={(e) => setReportEndDate(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    />
                   </div>
+
+                  {/* 3. Obra Selection */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">Obra Destino:</label>
+                    <select
+                      value={reportSelectedObra}
+                      onChange={(e) => setReportSelectedObra(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="Todas as Obras">Todas as Obras</option>
+                      {obras.map((o) => (
+                        <option key={o.id} value={o.nome}>{o.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 4. User / Operador */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">Responsável:</label>
+                    <select
+                      value={reportSelectedUser}
+                      onChange={(e) => setReportSelectedUser(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer text-ellipsis"
+                    >
+                      <option value="Todos os Usuários">Todos os Usuários</option>
+                      {reportUsersList.map((user) => (
+                        <option key={user} value={user}>{user}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 5. Type (Entrada vs Saída) */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">Tipo:</label>
+                    <select
+                      value={reportSelectedType}
+                      onChange={(e) => setReportSelectedType(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="Ambos">Ambos (Entrada/Saída)</option>
+                      <option value="Entrada">Entrada (Abastecimento)</option>
+                      <option value="Saída">Saída (Consumo/Gasto)</option>
+                    </select>
+                  </div>
+
+                  {/* 6. Material / Insumo */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">Material / Insumo:</label>
+                    <select
+                      value={reportSelectedMaterial}
+                      onChange={(e) => setReportSelectedMaterial(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer text-ellipsis"
+                    >
+                      <option value="Todos os Materiais">Todos os Materiais</option>
+                      {reportMaterialsList.map((material) => (
+                        <option key={material} value={material}>{material}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 7. Supplier / Fornecedor */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-400 block">Fornecedor:</label>
+                    <select
+                      value={reportSelectedSupplier}
+                      onChange={(e) => setReportSelectedSupplier(e.target.value)}
+                      className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer text-ellipsis"
+                    >
+                      <option value="Todos os Fornecedores">Todos os Fornecedores</option>
+                      {reportSuppliersList.map((sup) => (
+                        <option key={sup} value={sup}>{sup}</option>
+                      ))}
+                    </select>
+                  </div>
+
                 </div>
 
-                {/* Efficiency metrics overview */}
-                <div className="bg-[#161920] border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Status de Insumos</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-2.5 bg-slate-900/60 rounded border border-slate-800">
-                      <span className="text-xs text-slate-400">Cimento CP-II</span>
-                      <span className="text-xs font-semibold text-emerald-400">Bom Estado (300 un)</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2.5 bg-slate-900/60 rounded border border-slate-800">
-                      <span className="text-xs text-slate-400">Vergalhão CA-50</span>
-                      <span className="text-xs font-semibold text-rose-400">Alerta Crítico (0 kg)</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2.5 bg-slate-900/60 rounded border border-slate-800">
-                      <span className="text-xs text-slate-400">Areia Lavada</span>
-                      <span className="text-xs font-semibold text-emerald-400">Lote Reservado (25 m³)</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2.5 bg-slate-900/60 rounded border border-slate-800">
-                      <span className="text-xs text-slate-400">Piso Porcelanato</span>
-                      <span className="text-xs font-semibold text-slate-500">Inativo / Cancelado</span>
-                    </div>
+                {/* Clear Filters Action */}
+                {(reportStartDate || reportEndDate || reportSelectedObra !== 'Todas as Obras' || reportSelectedUser !== 'Todos os Usuários' || reportSelectedType !== 'Ambos' || reportSelectedMaterial !== 'Todos os Materiais' || reportSelectedSupplier !== 'Todos os Fornecedores') && (
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => {
+                        setReportStartDate('');
+                        setReportEndDate('');
+                        setReportSelectedObra('Todas as Obras');
+                        setReportSelectedUser('Todos os Usuários');
+                        setReportSelectedType('Ambos');
+                        setReportSelectedMaterial('Todos os Materiais');
+                        setReportSelectedSupplier('Todos os Fornecedores');
+                        triggerToast('Filtros do relatório redefinidos!', 'info');
+                      }}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition-all flex items-center gap-1.5 cursor-pointer border border-slate-700"
+                    >
+                      Restaurar Todos os Filtros
+                    </button>
                   </div>
-                </div>
-
+                )}
               </div>
 
-              {/* Log List of historical withdrawals (Historico de Baixas) */}
+              {/* Dynamic KPI summary card in search scope */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" id="filtered-report-summary-cards">
+                <div className="p-4 bg-[#161920] border border-slate-800 rounded-xl">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Registros Encontrados</span>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-black font-sans text-white">{filteredMovements.length}</span>
+                    <span className="text-xs text-slate-500">movimentações</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-[#161920] border border-slate-800 rounded-xl">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Entradas Filtradas</span>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-black font-sans text-emerald-400">
+                      {filteredMovements.filter(m => m.tipo === 'ENTRADA').length}
+                    </span>
+                    <span className="text-xs text-slate-500">lotes abastecidos</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-[#161920] border border-slate-800 rounded-xl">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Saídas / Consumo</span>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-black font-sans text-rose-400">
+                      {filteredMovements.filter(m => m.tipo === 'SAIDA').length}
+                    </span>
+                    <span className="text-xs text-slate-500">baixas registradas</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Log List of historical withdrawals (Historico de Baixas / Diário de Retiradas) resembling user image */}
               <div className="bg-[#161920] border border-slate-800 rounded-xl overflow-hidden" id="withdraw-logs-panel">
                 <div className="p-5 border-b border-slate-800 bg-[#1C2028] flex justify-between items-center">
                   <div>
-                    <h3 className="text-base font-serif font-semibold text-white">Diário de Retiradas e Consumo</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Logs sequenciais de movimentações registradas por mestre de obras e estagiários.</p>
+                    <h3 className="text-base font-sans font-bold text-white uppercase tracking-tight">Diário de Retiradas e Consumo</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Logs sequenciais de movimentações registradas por mestre de obras, almoxarifes e estagiários.</p>
                   </div>
                   <History size={18} className="text-slate-400" />
                 </div>
 
-                <div className="divide-y divide-slate-800/80">
-                  {baixas
-                    .filter((b) => selectedObra === 'Todas as Obras' || b.obra === selectedObra)
-                    .map((item) => (
-                      <div key={item.id} className="p-4.5 hover:bg-slate-800/10 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
-                        
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded bg-orange-950/20 border border-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
-                            <TrendingDown size={14} />
-                          </div>
-                          <div>
-                            <span className="text-xs text-slate-500 italic block">{item.data} • Responsável: <strong className="text-slate-300">{item.colaborador}</strong></span>
-                            <span className="text-white font-medium">{item.insumo}</span> na obra <span className="text-slate-400 font-semibold">{item.obra}</span>
-                          </div>
-                        </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse" id="reports-diary-table">
+                    <thead>
+                      <tr className="bg-[#0F1115] border-b border-slate-800/80 text-[10px] font-sans font-extrabold text-slate-455 uppercase tracking-widest leading-none">
+                        <th className="py-4.5 px-5">Data / Hora</th>
+                        <th className="py-4.5 px-4 text-center">Tipo</th>
+                        <th className="py-4.5 px-4">Obra Destino</th>
+                        <th className="py-4.5 px-4">Insumo</th>
+                        <th className="py-4.5 px-4 text-right">Quantidade</th>
+                        <th className="py-4.5 px-5">Documento / Justificativa de Uso</th>
+                        <th className="py-4.5 px-4">Responsável Técnico</th>
+                        <th className="py-4.5 px-5 text-center">Estorno</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50 font-sans text-xs">
+                      {filteredMovements.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-14 text-center text-slate-500 bg-[#161920]">
+                            <ClipboardList size={36} className="mx-auto text-slate-800 mb-3" />
+                            <p className="text-sm font-semibold text-white">Nenhuma movimentação de estoque localizada.</p>
+                            <p className="text-[11px] text-slate-500 mt-1">Limpe os filtros de pesquisa acima para reexibir todos os lançamentos.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredMovements.map((item) => {
+                          const isEntrada = item.tipo === 'ENTRADA';
+                          return (
+                            <tr key={`${item.tipo}:::${item.id}:::${item.codigo}`} className="hover:bg-slate-800/10 transition-colors">
+                              
+                              {/* DATA / HORA */}
+                              <td className="py-4 px-5 font-mono text-slate-450 whitespace-nowrap">
+                                {item.data}
+                              </td>
 
-                        <div className="text-right sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end">
-                          <span className="text-xs text-slate-500 block sm:hidden">Quantidade retirada:</span>
-                          <span className="text-sm font-bold text-orange-400 font-mono">-{item.quantidade} {item.unidade}</span>
-                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">{item.id}</span>
-                        </div>
+                              {/* TIPO badge in layout format */}
+                              <td className="py-4 px-4 text-center whitespace-nowrap">
+                                {isEntrada ? (
+                                  <span className="inline-block px-3 py-1 text-[9px] font-extrabold uppercase bg-[#004D40]/30 text-emerald-400 border border-emerald-500/20 rounded">
+                                    Entrada
+                                  </span>
+                                ) : (
+                                  <span className="inline-block px-3 py-1 text-[9px] font-extrabold uppercase bg-[#4A1525]/30 text-rose-400 border border-rose-500/20 rounded">
+                                    Saída
+                                  </span>
+                                )}
+                              </td>
 
-                      </div>
-                    ))}
+                              {/* OBRA DESTINO */}
+                              <td className="py-4 px-4 font-bold text-slate-200">
+                                {item.obra}
+                              </td>
+
+                              {/* INSUMO */}
+                              <td className="py-4 px-4 text-slate-300 font-semibold" title={item.insumo}>
+                                {item.insumo}
+                              </td>
+
+                              {/* QUANTIDADE */}
+                              <td className={`py-4 px-4 text-right font-bold font-mono whitespace-nowrap ${isEntrada ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {isEntrada ? `+${item.quantidade}` : `-${item.quantidade}`} <span className="text-[10px] font-medium text-slate-500">{item.unidade}</span>
+                              </td>
+
+                              {/* DOCUMENTO / JUSTIFICATIVA DE USO */}
+                              <td className="py-4 px-5 text-slate-400" title={item.documento}>
+                                {item.documento}
+                              </td>
+
+                              {/* RESPONSÁVEL TÉCNICO */}
+                              <td className="py-4 px-4 text-slate-350 font-semibold whitespace-nowrap">
+                                {item.responsavel}
+                              </td>
+
+                              {/* ESTORNO */}
+                              <td className="py-4 px-5 text-center">
+                                <button
+                                  onClick={() => handleEstornoMovement(item)}
+                                  className="p-1.5 duration-150 hover:bg-rose-500/10 hover:text-rose-450 text-rose-500/60 rounded-full cursor-pointer transition-all border border-transparent hover:border-rose-500/20 shadow-sm"
+                                  title={`Estornar esta ${isEntrada ? 'entrada (devolução)' : 'baixa'} de material`}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </td>
+
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
 
               </div>
@@ -3486,7 +4390,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   <Shield size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white font-serif">Painel de Administração Corporal & Permissões</h3>
+                  <h3 className="text-sm font-extrabold text-white font-sans">Painel de Administração Corporal & Permissões</h3>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                     Operando como <strong>{currentUser.nome}</strong>. Modifique autonomias de ação do time, crie instalações e altere senhas de mestre de obras. Use o menu suspenso operador na barra lateral para trocar de perfil instantaneamente e testar suas regras.
                   </p>
@@ -3500,7 +4404,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="bg-[#161920] border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
-                      <h3 className="text-sm font-serif font-semibold text-white flex items-center gap-2">
+                      <h3 className="text-sm font-sans font-extrabold text-white flex items-center gap-2">
                         <Database size={16} className="text-emerald-400" />
                         Conexão em Nuvem Google Sheets
                       </h3>
@@ -3563,7 +4467,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="bg-[#161920] border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
-                      <h3 className="text-sm font-serif font-semibold text-white flex items-center gap-2">
+                      <h3 className="text-sm font-sans font-extrabold text-white flex items-center gap-2">
                         <FileDown size={16} className="text-purple-400" />
                         Exportar Pacote para GitHub / Vercel
                       </h3>
@@ -3604,7 +4508,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="lg:col-span-5 bg-[#161920] border border-slate-800 rounded-xl p-5 flex flex-col justify-between" id="admin-obras-panel">
                   <div>
                     <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
-                      <h3 className="text-sm font-serif font-semibold text-white flex items-center gap-2">
+                      <h3 className="text-sm font-sans font-extrabold text-white flex items-center gap-2">
                         <MapPin size={16} className="text-purple-400" />
                         Obras em Andamento ({obras.length})
                       </h3>
@@ -3745,7 +4649,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <div className="lg:col-span-7 bg-[#161920] border border-slate-800 rounded-xl p-5 flex flex-col justify-between" id="admin-usuarios-panel">
                   <div>
                     <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
-                      <h3 className="text-sm font-serif font-semibold text-white flex items-center gap-2">
+                      <h3 className="text-sm font-sans font-extrabold text-white flex items-center gap-2">
                         <Users size={16} className="text-purple-400" />
                         Lista de Colaboradores e Autonomias ({usuarios.length})
                       </h3>
@@ -4114,7 +5018,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             
             {/* Modal Heading */}
             <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
-              <h3 className="text-base font-serif font-semibold text-white">Nova Entrada: Comprar Insumo</h3>
+              <h3 className="text-base font-sans font-extrabold text-white">Nova Entrada: Comprar Insumo</h3>
               <button
                 onClick={() => setShowOrderModal(false)}
                 className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded transition-all"
@@ -4220,122 +5124,207 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
       {/* MODAL 2: REGISTRAR BAIXA DE MATERIAL */}
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#161920] border border-slate-700 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-[#0B0D12] border border-slate-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
-            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
-              <h3 className="text-base font-serif font-semibold text-white">Registrar Saída / Baixa em Obra</h3>
+            {/* Header */}
+            <div className="p-5 border-b border-slate-850 flex justify-between items-start bg-[#0D1017]">
+              <div>
+                <h3 className="text-white font-bold text-sm tracking-wide">
+                  Baixa de material / Saida de estoque
+                </h3>
+                <p className="text-slate-400 text-[11px] mt-0.5 leading-tight">
+                  Dedução direta no saldo físico do almoxarifado
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowWithdrawModal(false)}
-                className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded transition-all"
+                className="text-slate-400 hover:text-white text-xs font-semibold uppercase tracking-wider transition-all pt-0.5"
               >
-                <X size={18} />
+                Fechar
               </button>
             </div>
 
-            <form onSubmit={handleCreateWithdrawal} className="p-6 space-y-4">
-              
-              {/* Construction Site Select (Obra origin) */}
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Selecionar Obra:</label>
-                <select
-                  value={newWithdrawObra}
-                  onChange={(e) => handleWithdrawObraChange(e.target.value)}
-                  className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-sm rounded-lg p-2.5 focus:border-emerald-500 focus:outline-none"
-                >
-                  {listObras.map((o) => (
-                    <option key={o} value={o}>{o}</option>
-                  ))}
-                </select>
-              </div>
+            {(() => {
+              const selectedStockItem = stockInventory.find(
+                item => item.obra === newWithdrawObra && item.insumo === newWithdrawInsumo
+              );
+              const maxAvailable = selectedStockItem ? selectedStockItem.saldo : 0;
 
-              {/* Insumo Origin of Withdrawal */}
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Insumo com Saldo Disponível:</label>
-                {insumosForWithdrawal.length === 0 ? (
-                  <div className="bg-[#150a0a] border border-red-950 p-3 rounded text-xs text-red-400 italic">
-                    Não existem insumos com saldo em estoque para retirada nesta obra no momento.
+              return (
+                <form onSubmit={handleCreateWithdrawal} className="p-5 space-y-4">
+                  
+                  {/* 1. Centro de Custo / Obra Solicitante */}
+                  <div>
+                    <label className="text-xs text-slate-350 font-bold block mb-1.5 font-sans">
+                      1. Centro de Custo / Obra Solicitante:
+                    </label>
+                    <div className="w-full bg-[#07090D]/80 border border-slate-850 text-slate-400 text-sm rounded-lg p-2.5 font-sans font-medium flex items-center justify-between">
+                      <span className="font-semibold text-slate-300">{newWithdrawObra}</span>
+                      <span className="text-[9px] text-slate-500 uppercase tracking-widest font-black bg-slate-900 px-1.5 py-0.5 rounded border border-slate-850">
+                        Preenchido
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <select
-                    value={newWithdrawInsumo}
-                    onChange={(e) => {
-                      setNewWithdrawInsumo(e.target.value);
-                      const matched = insumosForWithdrawal.find(i => i.insumo === e.target.value);
-                      if (matched) {
-                        setNewWithdrawQtd(Math.min(10, matched.saldo));
-                      }
-                    }}
-                    required
-                    className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-sm rounded-lg p-2.5 focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="">-- Selecionar Insumo --</option>
-                    {insumosForWithdrawal.map((item, idx) => (
-                      <option key={idx} value={item.insumo}>
-                        {item.insumo} (Saldo: {item.saldo} {item.unidade})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
 
-              {/* Outgoing quantity to log */}
-              {newWithdrawInsumo && (
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-slate-400 font-semibold block">Quantidade a Devolver / Retirar:</label>
-                    <span className="text-[10px] text-emerald-400 font-mono">
-                      Máx: {insumosForWithdrawal.find(i => i.insumo === newWithdrawInsumo)?.saldo || 0}
-                    </span>
+                  {/* 2. Material / Insumo Requisitado */}
+                  <div>
+                    <label className="text-xs text-slate-350 font-bold block mb-1.5 font-sans">
+                      2. Material / Insumo Requisitado:
+                    </label>
+                    <div className="w-full bg-[#07090D]/80 border border-slate-850 text-slate-300 text-sm rounded-lg p-3 font-sans flex flex-col gap-1">
+                      <span className="font-bold text-white text-sm">{newWithdrawInsumo}</span>
+                      {selectedStockItem && (selectedStockItem.codDetalhe || selectedStockItem.descricaoDetalhe) && (
+                        <div className="text-xs text-slate-400 mt-1 flex items-center flex-wrap gap-1 border-t border-slate-850/60 pt-1.5">
+                          {selectedStockItem.codDetalhe && selectedStockItem.descricaoDetalhe ? (
+                            <>
+                              <span className="font-mono font-semibold text-emerald-400">{selectedStockItem.codDetalhe}</span>
+                              <span className="text-slate-500">-</span>
+                              <span className="text-slate-400 font-medium">{selectedStockItem.descricaoDetalhe}</span>
+                            </>
+                          ) : (
+                            <span className="font-mono font-semibold text-emerald-400">
+                              {selectedStockItem.codDetalhe || selectedStockItem.descricaoDetalhe}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <input
-                    type="number"
-                    min="1"
-                    max={insumosForWithdrawal.find(i => i.insumo === newWithdrawInsumo)?.saldo || 9999}
-                    value={newWithdrawQtd}
-                    onChange={(e) => {
-                      const maxAvailable = insumosForWithdrawal.find(i => i.insumo === newWithdrawInsumo)?.saldo || 0;
-                      setNewWithdrawQtd(Math.min(maxAvailable, Math.max(1, parseInt(e.target.value) || 0)));
-                    }}
-                    className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-              )}
 
-              {/* Collaborator (who is the person withdrawing) */}
-              <div>
-                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Colaborador / Mestre Responsável:</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Mestre de Obras Antonio, Eng. Silva..."
-                  value={newWithdrawColab}
-                  onChange={(e) => setNewWithdrawColab(e.target.value)}
-                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none placeholder-slate-600"
-                />
-              </div>
+                  {/* Banner: Saldo para Liberação Física */}
+                  {selectedStockItem && (
+                    <div className="border border-slate-800 rounded-lg bg-[#07090D] px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-slate-450 text-xs font-semibold font-sans">
+                        Saldo para Liberação Física:
+                      </span>
+                      <span className="text-[#FFC800] font-black text-sm tracking-wide font-mono">
+                        {selectedStockItem.saldo} {selectedStockItem.unidade}
+                      </span>
+                    </div>
+                  )}
 
-              {/* Footer */}
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowWithdrawModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={insumosForWithdrawal.length === 0 || !newWithdrawInsumo}
-                  className={`px-4 py-2 rounded text-sm font-semibold transition-all ${
-                    insumosForWithdrawal.length === 0 || !newWithdrawInsumo
-                      ? 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                  }`}
-                >
-                  Registrar Saída
-                </button>
-              </div>
+                  {/* 3. Quantidade Consumida */}
+                  <div>
+                    <label className="text-xs text-slate-300 font-bold block mb-1.5 font-sans">
+                      3. Quantidade Consumida: <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={maxAvailable}
+                      placeholder="Ex: 25"
+                      value={newWithdrawQtd || ''}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (isNaN(val)) {
+                          setNewWithdrawQtd(0);
+                        } else {
+                          // Imposes maximum stock limit strictly on input
+                          setNewWithdrawQtd(Math.min(maxAvailable, Math.max(0, val)));
+                        }
+                      }}
+                      required
+                      className="w-full bg-[#07090D] border border-slate-805 rounded-lg p-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-slate-705 focus:outline-none transition-all font-sans"
+                    />
+                    {newWithdrawQtd > maxAvailable && (
+                      <p className="text-[11px] text-rose-500 mt-1 font-sans">
+                        A quantidade consumida não pode ser maior do que o saldo total ({maxAvailable}).
+                      </p>
+                    )}
+                  </div>
 
-            </form>
+                  {/* 4. Destino de Aplicação / Local */}
+                  <div>
+                    <label className="text-xs text-slate-300 font-bold block mb-1.5 font-sans flex items-center gap-1">
+                      <span>4. Destino de Aplicação / Local:</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Alvenaria estrutural do 3º pavimento do bloco B"
+                      value={newWithdrawDestino}
+                      onChange={(e) => setNewWithdrawDestino(e.target.value)}
+                      required
+                      className="w-full bg-[#07090D] border border-slate-805 rounded-lg p-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-slate-705 focus:outline-none transition-all font-sans"
+                    />
+                  </div>
+
+                  {/* 5. Autorizado por (Mestre / Encarregado) */}
+                  <div>
+                    <label className="text-xs text-slate-300 font-bold block mb-1.5 font-sans flex items-center gap-1">
+                      <span>5. Autorizado por (Mestre / Encarregado):</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Eng. Ricardo Albuquerque"
+                      value={newWithdrawAutorizado}
+                      onChange={(e) => setNewWithdrawAutorizado(e.target.value)}
+                      required
+                      className="w-full bg-[#07090D] border border-slate-805 rounded-lg p-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-slate-705 focus:outline-none transition-all font-sans"
+                    />
+                  </div>
+
+                  {/* Footer Action Buttons */}
+                  <div className="pt-4 border-t border-slate-850 flex justify-end gap-3 bg-[#0B0D12]">
+                    <button
+                      type="button"
+                      onClick={() => setShowWithdrawModal(false)}
+                      className="px-5 py-2.5 bg-[#1E2530] hover:bg-[#252E3B] text-slate-300 text-sm font-bold rounded-lg transition-all font-sans"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={maxAvailable === 0 || !newWithdrawInsumo || newWithdrawQtd <= 0 || newWithdrawQtd > maxAvailable || !newWithdrawDestino.trim() || !newWithdrawAutorizado.trim()}
+                      className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all font-sans ${
+                        maxAvailable === 0 || !newWithdrawInsumo || newWithdrawQtd <= 0 || newWithdrawQtd > maxAvailable || !newWithdrawDestino.trim() || !newWithdrawAutorizado.trim()
+                          ? 'bg-[#1E2530]/50 text-slate-600 cursor-not-allowed border border-slate-900/40'
+                          : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/25'
+                      }`}
+                    >
+                      Confirmar Saída
+                    </button>
+                  </div>
+
+                </form>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DE SUCESSO DA BAIXA (CENTERED POPUP) */}
+      {showWithdrawSuccessScreen && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+          <div className="bg-[#0B0D12] border border-emerald-500/30 p-8 rounded-2xl shadow-2xl flex flex-col items-center justify-center max-w-xs w-full text-center scale-in-center animate-in fade-in duration-300">
+            <div className="w-16 h-16 bg-emerald-500/15 rounded-full flex items-center justify-center mb-4 border border-emerald-500/40 animate-bounce">
+              <Check size={32} className="text-emerald-400 stroke-[3px]" />
+            </div>
+            <h3 className="text-xl font-black text-white tracking-wide">
+              Baixa realizada
+            </h3>
+            <p className="text-slate-400 text-xs mt-2 leading-relaxed font-sans">
+              O estoque da obra foi atualizado e as alterações foram registradas.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DE SUCESSO DA RECONCILIAÇÃO / AJUSTE DE ESTOQUE */}
+      {showReconcileSuccessScreen && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+          <div className="bg-[#0B0D12] border border-emerald-500/30 p-8 rounded-2xl shadow-2xl flex flex-col items-center justify-center max-w-xs w-full text-center scale-in-center animate-in fade-in duration-300">
+            <div className="w-16 h-16 bg-emerald-500/15 rounded-full flex items-center justify-center mb-4 border border-emerald-500/40 animate-bounce">
+              <Check size={32} className="text-emerald-400 stroke-[3px]" />
+            </div>
+            <h3 className="text-xl font-black text-white tracking-wide">
+              Ajuste realizado
+            </h3>
+            <p className="text-slate-400 text-xs mt-2 leading-relaxed font-sans">
+              O estoque da obra foi reconciliado e o lançamento de ajuste foi registrado com sucesso.
+            </p>
           </div>
         </div>
       )}
@@ -4556,7 +5545,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             <div className="w-14 h-14 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-400">
               <Lock size={24} />
             </div>
-            <h3 className="text-lg font-serif font-bold text-white mb-2">Acesso Negado</h3>
+            <h3 className="text-lg font-sans font-extrabold text-white mb-2">Acesso Negado</h3>
             <p className="text-xs text-slate-400 mb-4 leading-relaxed">
               Você tentou <strong>{lockModalReason}</strong>. Esta operação é restrita para perfis com autonomias específicas autorizadas.
             </p>
@@ -4587,7 +5576,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           <div className="bg-[#161920] border border-slate-700 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
               <div>
-                <h3 className="text-base font-serif font-semibold text-white">Editar Especificações do Pedido</h3>
+                <h3 className="text-base font-sans font-extrabold text-white">Editar Especificações do Pedido</h3>
                 <span className="text-xs text-slate-500 mt-0.5 font-mono">ID: {editingPedido.id}</span>
               </div>
               <button
@@ -4808,7 +5797,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           <div className="bg-[#161920] border border-slate-700 w-full max-w-sm rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
               <div>
-                <h3 className="text-base font-serif font-semibold text-white">Cadastrar Novo Colaborador</h3>
+                <h3 className="text-base font-sans font-extrabold text-white">Cadastrar Novo Colaborador</h3>
                 <span className="text-xs text-slate-500 mt-0.5 font-mono">Credenciais Provisórias</span>
               </div>
               <button
@@ -4849,7 +5838,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1.5 font-serif font-medium">Função Atribuída:</label>
+                <label className="text-xs text-slate-400 block mb-1.5 font-sans font-extrabold">Função Atribuída:</label>
                 <select
                   id="new-user-role-select"
                   className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-xs rounded-lg p-2.5 focus:border-purple-550 focus:outline-none"
@@ -4893,7 +5882,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#1C2028]">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={18} className="text-rose-500 animate-pulse" />
-                <h3 className="text-base font-serif font-semibold text-white">Confirmar Apagamento Geral</h3>
+                <h3 className="text-base font-sans font-extrabold text-white">Confirmar Apagamento Geral</h3>
               </div>
               <button
                 type="button"
@@ -4931,6 +5920,130 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   Sim, apagar tudo e zerar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RECONCILIAÇÃO DE SALDO FÍSICO (INVENTÁRIO) */}
+      {showReconcileModal && reconcileItem && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0B0F19] border border-[#232D42] w-full max-w-md rounded-[16px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="p-6 pb-4 flex justify-between items-start">
+              <div>
+                <h3 className="text-white font-extrabold text-base tracking-wide font-sans">Reconciliação de Estoque Físico</h3>
+                <span className="text-xs text-slate-400 font-sans block mt-1">{reconcileItem.obra}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReconcileModal(false);
+                  setReconcileItem(null);
+                }}
+                className="text-slate-400 hover:text-white transition-all text-sm font-semibold pt-1"
+              >
+                Fechar
+              </button>
+            </div>
+
+            {/* Subtle Divider Line */}
+            <div className="border-b border-[#1F2636] mx-6"></div>
+
+            <div className="p-6 space-y-4">
+              
+              {/* Insumo Box / Framed Details */}
+              <div className="border border-[#2D384E] rounded-xl bg-[#111726] p-4 space-y-1.5">
+                <div className="text-xs text-slate-400">
+                  Insumo: <span className="font-extrabold text-white text-sm block mt-0.5">{reconcileItem.insumo}</span>
+                </div>
+                <div className="text-xs text-slate-400">
+                  Descrição / Detalhe do Insumo: <span className="font-semibold text-slate-300 block mt-0.5">
+                    {reconcileItem.codDetalhe || reconcileItem.descricaoDetalhe ? (
+                      `${reconcileItem.codDetalhe || ''} ${reconcileItem.descricaoDetalhe || ''}`.trim()
+                    ) : (
+                      'Sem detalhamento adicional'
+                    )}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400 pt-1 border-t border-[#1F2636]/50 mt-2">
+                  Saldo Atual do Sistema: <span className="font-black text-[#FFC800] uppercase font-mono">{reconcileItem.saldo} {reconcileItem.unidade}</span>
+                </div>
+              </div>
+
+              {/* Input Area 1: Quantidade Física */}
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-300 font-bold font-sans block">
+                  Novo Saldo Real Contado Fisicamente no Pátio: *
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={reconcileNewPhysicalQty}
+                    onChange={(e) => setReconcileNewPhysicalQty(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="flex-1 bg-[#07090F] border border-[#232D42] focus:border-[#FFC800] text-white p-2.5 rounded-lg text-sm font-bold font-mono focus:outline-none placeholder-slate-700"
+                    placeholder="Ex: 195"
+                    required
+                  />
+                  <div className="bg-[#07090F] border border-[#232D42] text-slate-400 font-extrabold font-mono px-4 rounded-lg flex items-center justify-center text-xs uppercase min-w-[55px] select-none">
+                    {reconcileItem.unidade || 'SC'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Input Area 2: Justificativa */}
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-300 font-bold font-sans block">
+                  Justificativa da Divergência (Quebra, perda ou erro): *
+                </label>
+                <textarea
+                  rows={2.5}
+                  placeholder="Ex: Perdas no manuseio de sacarias / Ajuste anual de balanço físico"
+                  value={reconcileJustificativa}
+                  onChange={(e) => setReconcileJustificativa(e.target.value)}
+                  className="w-full bg-[#07090F] border border-[#232D42] focus:border-[#FFC800] text-white text-xs p-2.5 rounded-lg focus:outline-none placeholder-slate-600 resize-none font-sans leading-relaxed"
+                  required
+                />
+              </div>
+
+              {/* Input Area 3: Responsável */}
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-300 font-bold font-sans block">
+                  Responsável Técnico / Almoxarife: *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Eng. Ricardo Albuquerque"
+                  value={reconcileResponsavel}
+                  onChange={(e) => setReconcileResponsavel(e.target.value)}
+                  className="w-full bg-[#07090F] border border-[#232D42] focus:border-[#FFC800] text-white text-xs p-2.5 rounded-lg focus:outline-none placeholder-slate-600 font-sans"
+                  required
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="border-t border-[#1F2636] pt-4 flex gap-3 justify-end font-sans">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReconcileModal(false);
+                    setReconcileItem(null);
+                  }}
+                  className="px-5 py-2.5 bg-[#1F2937]/70 hover:bg-[#202938] text-slate-300 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReconcileWeight}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all"
+                >
+                  Aplicar reajuste
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
