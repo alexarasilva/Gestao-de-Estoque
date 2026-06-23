@@ -96,75 +96,77 @@ export function LogoIcon({ className = "w-9 h-9" }: { className?: string }) {
   );
 }
 
-// Corporate Logo Wide (without circular background) to display beautifully at the bottom of the sidebar
+// Corporate Logo Wide to display beautifully at the bottom of the sidebar, using the actual uploaded image
 export function CorporateLogoWide({ collapsed = false }: { collapsed?: boolean }) {
   const [hasError, setHasError] = useState(false);
 
-  if (collapsed) {
-    if (hasError) {
+  if (hasError) {
+    if (collapsed) {
       return (
-        <div className="flex justify-center py-4 px-2 w-full border-t border-slate-800/40 mt-4">
-          <svg viewBox="20 15 60 70" className="w-8 h-8 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Inner solid upward-pointing triangle */}
-            <path
-              d="M50 56 L59 75 H41 Z"
-              fill="#FFFFFF"
-            />
-            {/* Yellow delta chevron logo */}
-            <path
-              d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
-              fill="#FFC800"
-            />
-          </svg>
+        <div className="flex justify-center py-4 px-2 w-full mt-2 select-none">
+          <div className="w-10 h-10 rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300">
+            <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="48" fill="#FFC800" />
+              <path d="M50 56 L59 75 H41 Z" fill="#FFFFFF" />
+              <path d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z" fill="#000000" />
+            </svg>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="flex justify-center py-4 px-2 w-full border-t border-slate-800/40 mt-4">
-        <img
-          src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
-          alt="Logo Absoluta"
-          className="w-10 h-10 select-none shrink-0 object-contain rounded-full"
-          onError={() => setHasError(true)}
-          referrerPolicy="no-referrer"
-        />
+      <div className="px-5 py-4 mt-2 flex flex-col items-center justify-center w-full select-none">
+        <div className="w-full max-w-[190px] aspect-square rounded-full overflow-hidden opacity-35 hover:opacity-95 transition-opacity duration-300">
+          <svg viewBox="0 0 200 200" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="100" cy="100" r="98" fill="#FFC800" />
+            <g transform="translate(23, 85) scale(0.88)">
+              <g transform="translate(0, 0) scale(0.35)">
+                <path d="M 6 85 L 50 10 L 94 85 L 79 85 L 50 35 L 21 85 Z" fill="#000000" />
+                <path d="M 32 85 L 50 54 L 68 85 Z" fill="#000000" />
+              </g>
+              <text
+                x="38"
+                y="26"
+                fill="#000000"
+                fontSize="26"
+                fontWeight="900"
+                letterSpacing="0.05em"
+                fontFamily="system-ui, -apple-system, 'Inter', sans-serif"
+                className="font-sans select-none"
+              >
+                BSOLUTA
+              </text>
+            </g>
+          </svg>
+        </div>
       </div>
     );
   }
 
-  if (hasError) {
+  if (collapsed) {
     return (
-      <div className="px-4 py-4 mt-4 border-t border-slate-800/40 flex flex-col items-center justify-center w-full">
-        <div className="w-full flex items-center justify-center gap-3 hover:opacity-95 transition-all">
-          <svg viewBox="20 15 60 70" className="w-12 h-12 select-none shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Inner solid upward-pointing triangle */}
-            <path
-              d="M50 56 L59 75 H41 Z"
-              fill="#FFFFFF"
-            />
-            {/* Yellow delta chevron logo */}
-            <path
-              d="M50 19 L73 75 H65 L50 43 L35 75 H27 Z"
-              fill="#FFC800"
-            />
-          </svg>
-          <div className="flex flex-col">
-            <span className="text-sm font-sans font-black tracking-widest text-white leading-none">ABSOLUTA</span>
-            <span className="text-[9px] font-mono font-extrabold tracking-[0.25em] text-[#FFC800] mt-1 leading-none">CONSTRUTORA</span>
-          </div>
+      <div className="flex justify-center py-4 px-2 w-full mt-2 select-none">
+        <div className="w-10 h-10 rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300">
+          <img
+            src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
+            alt="Logo Absoluta"
+            className="w-full h-full object-contain rounded-full"
+            onError={() => setHasError(true)}
+            referrerPolicy="no-referrer"
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-4 mt-4 border-t border-slate-800/40 flex items-center justify-center w-full">
-      <div className="w-full flex items-center justify-center hover:opacity-95 transition-all px-2">
+    <div className="px-5 py-4 mt-2 flex flex-col items-center justify-center w-full select-none">
+      <div className="w-full max-w-[190px] aspect-square rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300">
         <img
-          src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/logo-absoluta-construtora-topo.png"
-          alt="Absoluta Construtora Logo"
-          className="w-48 h-auto select-none shrink-0 object-contain"
+          src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
+          alt="Logo Absoluta"
+          className="w-full h-full object-contain rounded-full"
           onError={() => setHasError(true)}
           referrerPolicy="no-referrer"
         />
@@ -250,6 +252,22 @@ export function formatDecimal(num: number | undefined | null): string {
   // Round to at most 4 decimal places
   const rounded = Math.round(num * 10000) / 10000;
   return rounded.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+}
+
+export function parseDateHelper(val: any): number {
+  if (!val) return 0;
+  const str = String(val).trim();
+  const parts = str.split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-indexed
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      return new Date(year, month, day).getTime();
+    }
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
 export interface Baixa {
@@ -587,6 +605,7 @@ export default function App() {
 
   // Sienge excel/spreadsheet import state
   const [pedidosViewMode, setPedidosViewMode] = useState<'cards' | 'table'>('table');
+  const [pedidosDateFilter, setPedidosDateFilter] = useState<string>('last30');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Pedido | 'progress' | 'id_numeric' | '';
@@ -950,6 +969,64 @@ export default function App() {
 
     return Object.values(map);
   }, [pedidos, baixas]);
+
+  // Reference date baseline for the "Últimos 30 dias" filter
+  const referenceTime = useMemo(() => {
+    if (pedidos.length === 0) return new Date().getTime();
+    const now = new Date().getTime();
+    const maxTime = Math.max(...pedidos.map(p => parseDateHelper(p.dataPedido)));
+    // If maxTime in the database is older than 30 days compared to now,
+    // use maxTime to avoid showing empty list. Otherwise, use now.
+    if (now - maxTime > 30 * 24 * 60 * 60 * 1000) {
+      return maxTime;
+    }
+    return now;
+  }, [pedidos]);
+
+  // Unique list of MM/YYYY from active orders, sorted chronologically descending
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    pedidos.forEach(p => {
+      if (!p.dataPedido) return;
+      const parts = p.dataPedido.split('/');
+      if (parts.length === 3) {
+        monthsSet.add(`${parts[1]}/${parts[2]}`);
+      }
+    });
+    return Array.from(monthsSet).sort((a, b) => {
+      const [mA, yA] = a.split('/').map(Number);
+      const [mB, yB] = b.split('/').map(Number);
+      if (yA !== yB) return yB - yA;
+      return mB - mA;
+    });
+  }, [pedidos]);
+
+  // Filtered pedidos based on date selection
+  const pedidosFilteredByDate = useMemo(() => {
+    return pedidos.filter(p => {
+      if (!p.dataPedido) return false;
+      const orderTime = parseDateHelper(p.dataPedido);
+      
+      if (pedidosDateFilter === 'all') {
+        return true;
+      }
+      
+      if (pedidosDateFilter === 'last30') {
+        const cutoff = referenceTime - 30 * 24 * 60 * 60 * 1000;
+        // Allow cutoff up to referenceTime + 1 day
+        return orderTime >= cutoff && orderTime <= referenceTime + 24 * 60 * 60 * 1000;
+      }
+      
+      // MM/YYYY filter
+      const parts = p.dataPedido.split('/');
+      if (parts.length === 3) {
+        const mmYyyy = `${parts[1]}/${parts[2]}`;
+        return mmYyyy === pedidosDateFilter;
+      }
+      
+      return false;
+    });
+  }, [pedidos, pedidosDateFilter, referenceTime]);
 
   // Derived filtered inventories / orders lists
   const filteredPedidos = useMemo(() => {
@@ -3353,29 +3430,60 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               </div>
 
               {/* Status breakdown metrics */}
-              <div className="bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col md:flex-row justify-around gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-800">
-                <div className="flex-1 pb-4 md:pb-0 md:pr-4 text-center">
-                  <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">Total Solicitados</p>
-                  <p className="text-2xl font-sans font-bold text-white tracking-tight">{pedidos.length} Pedidos</p>
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Métricas de Entrega</span>
+                  </div>
+                  {/* Filtro por Período / Mês-Ano (MM/AAAA) */}
+                  <div className="flex items-center gap-1.5 bg-[#161920] px-2.5 py-1 rounded-lg border border-slate-800 text-xs text-slate-300">
+                    <Calendar size={13} className="text-slate-400 shrink-0" />
+                    <span className="text-slate-500 font-medium">Período dos cartões:</span>
+                    <select
+                      value={pedidosDateFilter}
+                      onChange={(e) => setPedidosDateFilter(e.target.value)}
+                      className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer hover:text-emerald-300 transition-colors"
+                      title="Filtrar dados dos cartões de métricas"
+                    >
+                      <option value="last30" className="bg-[#161920] text-slate-300">Últimos 30 Dias (Padrão)</option>
+                      <option value="all" className="bg-[#161920] text-slate-300">Todo o Período</option>
+                      {availableMonths.map(m => (
+                        <option key={m} value={m} className="bg-[#161920] text-slate-300">{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="flex-1 py-4 md:py-0 md:px-4 text-center">
-                  <p className="text-[11px] text-amber-400 uppercase font-bold tracking-wider mb-1">Pendentes de Entrega</p>
-                  <p className="text-2xl font-sans font-bold text-amber-500 tracking-tight">
-                    {pedidos.filter(p => p.status === 'Pendente').length} Pedidos
-                  </p>
-                </div>
-                <div className="flex-1 py-4 md:py-0 md:px-4 text-center">
-                  <p className="text-[11px] text-blue-400 uppercase font-bold tracking-wider mb-1">Entregas Parciais</p>
-                  <p className="text-2xl font-sans font-bold text-blue-400 tracking-tight">
-                    {pedidos.filter(p => p.status === 'Parcial').length} Pedidos
-                  </p>
-                </div>
-                <div className="flex-1 pt-4 md:pt-0 md:pl-4 text-center">
-                  <p className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider mb-1 font-semibold">Entregue Totalmente</p>
-                  <p className="text-2xl font-sans font-bold text-emerald-400 tracking-tight">
-                    {pedidos.filter(p => p.status === 'Entregue').length} Pedidos
-                  </p>
-                </div>
+
+                {(() => {
+                  const ordersSubset = pedidosFilteredByDate.filter((p) => selectedObra === 'Todas as Obras' || p.obra === selectedObra);
+                  return (
+                    <div className="bg-[#161920] border border-slate-800 rounded-xl p-6 flex flex-col md:flex-row justify-around gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                      <div className="flex-1 pb-4 md:pb-0 md:pr-4 text-center">
+                        <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">Total Solicitados</p>
+                        <p className="text-2xl font-sans font-bold text-white tracking-tight">{ordersSubset.length} Pedidos</p>
+                      </div>
+                      <div className="flex-1 py-4 md:py-0 md:px-4 text-center">
+                        <p className="text-[11px] text-amber-400 uppercase font-bold tracking-wider mb-1">Pendentes de Entrega</p>
+                        <p className="text-2xl font-sans font-bold text-amber-500 tracking-tight">
+                          {ordersSubset.filter(p => p.status === 'Pendente').length} Pedidos
+                        </p>
+                      </div>
+                      <div className="flex-1 py-4 md:py-0 md:px-4 text-center">
+                        <p className="text-[11px] text-blue-400 uppercase font-bold tracking-wider mb-1">Entregas Parciais</p>
+                        <p className="text-2xl font-sans font-bold text-blue-400 tracking-tight">
+                          {ordersSubset.filter(p => p.status === 'Parcial').length} Pedidos
+                        </p>
+                      </div>
+                      <div className="flex-1 pt-4 md:pt-0 md:pl-4 text-center">
+                        <p className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider mb-1 font-semibold">Entregue Totalmente</p>
+                        <p className="text-2xl font-sans font-bold text-emerald-400 tracking-tight">
+                          {ordersSubset.filter(p => p.status === 'Entregue').length} Pedidos
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Search and Filters Header */}
