@@ -58,6 +58,9 @@ import {
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
+// @ts-ignore
+import logoAbsoluta from './assets/images/absoluta_logo_1782843565201.jpg';
+
 // Custom LogoIcon component reflecting the corporate design identity (stylized Delta/A in a yellow circle)
 export function LogoIcon({ className = "w-9 h-9" }: { className?: string }) {
   const [hasError, setHasError] = useState(false);
@@ -86,13 +89,15 @@ export function LogoIcon({ className = "w-9 h-9" }: { className?: string }) {
   }
 
   return (
-    <img
-      src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
-      alt="Logo Absoluta"
-      className={`${className} select-none shrink-0 rounded-full object-contain`}
-      onError={() => setHasError(true)}
-      referrerPolicy="no-referrer"
-    />
+    <div className={`${className} select-none shrink-0 rounded-full overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(255,200,0,0.45)]`}>
+      <img
+        src={logoAbsoluta}
+        alt="Logo Absoluta"
+        className="w-full h-full object-cover scale-[1.18] rounded-full"
+        onError={() => setHasError(true)}
+        referrerPolicy="no-referrer"
+      />
+    </div>
   );
 }
 
@@ -147,11 +152,11 @@ export function CorporateLogoWide({ collapsed = false }: { collapsed?: boolean }
   if (collapsed) {
     return (
       <div className="flex justify-center py-4 px-2 w-full mt-2 select-none">
-        <div className="w-10 h-10 rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300">
+        <div className="w-10 h-10 rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300 shadow-[0_0_15px_rgba(255,200,0,0.45)]">
           <img
-            src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
+            src={logoAbsoluta}
             alt="Logo Absoluta"
-            className="w-full h-full object-contain rounded-full"
+            className="w-full h-full object-cover scale-[1.18] rounded-full"
             onError={() => setHasError(true)}
             referrerPolicy="no-referrer"
           />
@@ -162,11 +167,11 @@ export function CorporateLogoWide({ collapsed = false }: { collapsed?: boolean }
 
   return (
     <div className="px-5 py-4 mt-2 flex flex-col items-center justify-center w-full select-none">
-      <div className="w-full max-w-[190px] aspect-square rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300">
+      <div className="w-full max-w-[190px] aspect-square rounded-full overflow-hidden opacity-30 hover:opacity-90 transition-opacity duration-300 shadow-[0_0_25px_rgba(255,200,0,0.35)]">
         <img
-          src="https://construtoraabsoluta.com.br/wp-content/uploads/2021/04/cropped-favicon-absoluta-192x192.png"
+          src={logoAbsoluta}
           alt="Logo Absoluta"
-          className="w-full h-full object-contain rounded-full"
+          className="w-full h-full object-cover scale-[1.18] rounded-full"
           onError={() => setHasError(true)}
           referrerPolicy="no-referrer"
         />
@@ -615,7 +620,7 @@ export default function App() {
     direction: '',
   });
   const [inventorySortConfig, setInventorySortConfig] = useState<{
-    key: 'obra' | 'insumo' | 'unidade' | 'recebido' | 'baixado' | 'saldo' | 'ultimaMovimentacao' | '';
+    key: 'obra' | 'fornecedor' | 'insumo' | 'unidade' | 'recebido' | 'baixado' | 'saldo' | 'ultimaMovimentacao' | '';
     direction: 'asc' | 'desc' | '';
   }>({
     key: 'ultimaMovimentacao',
@@ -673,6 +678,73 @@ export default function App() {
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const dx = moveEvent.clientX - startX;
       setColWidths((prev) => ({
+        ...prev,
+        [colKey]: Math.max(40, startWidth + dx),
+      }));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Interactive column widths state for Estoque por Obra table
+  const [inventoryColWidths, setInventoryColWidths] = useState<Record<string, number>>({
+    obra: 150,
+    fornecedor: 180,
+    insumo: 260,
+    recebido: 110,
+    baixado: 110,
+    saldo: 110,
+    ultimaMovimentacao: 120,
+    acoes: 180,
+  });
+
+  const handleInventoryResizeStart = (colKey: string, startEvent: React.MouseEvent) => {
+    startEvent.preventDefault();
+    const startX = startEvent.clientX;
+    const startWidth = inventoryColWidths[colKey] || 100;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      setInventoryColWidths((prev) => ({
+        ...prev,
+        [colKey]: Math.max(40, startWidth + dx),
+      }));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Interactive column widths state for Pedidos de Compra table
+  const [pedidosColWidths, setPedidosColWidths] = useState<Record<string, number>>({
+    pedido: 110,
+    obra: 150,
+    fornecedor: 170,
+    insumo: 245,
+    relacao: 190,
+    status: 170,
+    acoes: 140,
+  });
+
+  const handlePedidosResizeStart = (colKey: string, startEvent: React.MouseEvent) => {
+    startEvent.preventDefault();
+    const startX = startEvent.clientX;
+    const startWidth = pedidosColWidths[colKey] || 100;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      setPedidosColWidths((prev) => ({
         ...prev,
         [colKey]: Math.max(40, startWidth + dx),
       }));
@@ -788,7 +860,7 @@ export default function App() {
     }
   };
 
-  const handleInventorySortToggle = (key: 'obra' | 'insumo' | 'unidade' | 'recebido' | 'baixado' | 'saldo' | 'ultimaMovimentacao') => {
+  const handleInventorySortToggle = (key: 'obra' | 'fornecedor' | 'insumo' | 'unidade' | 'recebido' | 'baixado' | 'saldo' | 'ultimaMovimentacao') => {
     let newDirection: 'asc' | 'desc' | '' = 'asc';
     if (inventorySortConfig.key === key) {
       if (inventorySortConfig.direction === 'asc') {
@@ -805,6 +877,7 @@ export default function App() {
       const orderLabel = newDirection === 'asc' ? 'Crescente' : 'Decrescente';
       const keyLabels: Record<string, string> = {
         obra: 'Obra / Centro de Custo',
+        fornecedor: 'Fornecedor / Comprador',
         insumo: 'Material / Insumo',
         unidade: 'Unidade',
         recebido: 'Entradas Acumuladas',
@@ -832,6 +905,7 @@ export default function App() {
         unidade: string;
         obraId?: string;
         fornecedor?: string;
+        codComprador?: string;
         marca?: string;
         codDetalhe?: string;
         descricaoDetalhe?: string;
@@ -858,6 +932,7 @@ export default function App() {
           unidade: p.unidade,
           obraId: p.obraId,
           fornecedor: p.fornecedor,
+          codComprador: p.codComprador,
           marca: p.marca,
           codDetalhe: p.codDetalhe,
           descricaoDetalhe: p.descricaoDetalhe,
@@ -870,6 +945,7 @@ export default function App() {
       
       // Keep last imported / updated data
       if (p.fornecedor) map[key].fornecedor = p.fornecedor;
+      if (p.codComprador) map[key].codComprador = p.codComprador;
       if (p.marca) map[key].marca = p.marca;
       if (p.codDetalhe) map[key].codDetalhe = p.codDetalhe;
       if (p.descricaoDetalhe) map[key].descricaoDetalhe = p.descricaoDetalhe;
@@ -2783,7 +2859,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           {!isSidebarCollapsed ? (
             <div className="flex items-center justify-between gap-2.5 mb-6">
               <div className="flex items-center gap-3">
-                <LogoIcon className="w-12 h-12 rounded-full shadow-lg shadow-yellow-500/20 shrink-0 transition-transform duration-300 hover:scale-105" />
+                <LogoIcon className="w-12 h-12 rounded-full shrink-0 transition-transform duration-300 hover:scale-105" />
                 <div>
                   <h1 className="text-base font-sans font-black tracking-tight text-white uppercase leading-none">Gestão de <span className="text-[#FFC800]">Estoque</span></h1>
                   <p className="text-[10px] text-yellow-505 font-mono tracking-widest uppercase font-extrabold mt-1">ABSOLUTA CONSTRUTORA</p>
@@ -2800,7 +2876,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 mb-6">
-              <LogoIcon className="w-11 h-11 rounded-full shadow-lg shadow-yellow-500/20 transition-transform duration-300 hover:scale-105" />
+              <LogoIcon className="w-11 h-11 rounded-full transition-transform duration-300 hover:scale-105" />
               <button 
                 type="button" 
                 onClick={() => setIsSidebarCollapsed(false)}
@@ -2991,9 +3067,6 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               )}
             </button>
           </nav>
-          
-          {/* Logo Corporativo sem Fundo */}
-          <CorporateLogoWide collapsed={isSidebarCollapsed} />
         </div>
 
         {/* User profile / Footer */}
@@ -3555,15 +3628,23 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               </div>
 
               {/* Advanced Orders List - Dual view (Cards or Table listado) */}
+              {/* Advanced Orders List - Dual view (Cards or Table listado) */}
               {pedidosViewMode === 'table' ? (
                 <div className="overflow-x-auto border border-slate-800 rounded-xl bg-[#161920]">
-                  <table className="w-full text-left text-xs text-slate-300 border-collapse">
+                  <table 
+                    className="w-full text-left text-xs text-slate-300 border-collapse table-fixed"
+                    style={{ width: Object.keys(pedidosColWidths).reduce((sum, key) => sum + pedidosColWidths[key], 0), minWidth: '100%' }}
+                  >
                     <thead className="bg-[#1C2028] text-slate-400 text-[10px] uppercase font-sans font-semibold tracking-wider border-b border-slate-800">
                       <tr>
                         {/* PEDIDO DE COMPRA / EMISSÃO */}
                         <th 
-                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleSortToggle('id_numeric')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: pedidosColWidths.pedido }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleSortToggle('id_numeric');
+                          }}
                           title="Clique para ordenar por Pedido de Compra"
                         >
                           <div className="flex items-center justify-between gap-1.5">
@@ -3580,12 +3661,25 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('pedido', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
 
                         {/* C. CUSTO / OBRA */}
                         <th 
-                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleSortToggle('obra')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: pedidosColWidths.obra }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleSortToggle('obra');
+                          }}
                           title="Clique para ordenar por Obra"
                         >
                           <div className="flex items-center justify-between gap-1.5">
@@ -3602,12 +3696,25 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('obra', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
 
                         {/* FORNECEDOR */}
                         <th 
-                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleSortToggle('fornecedor')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: pedidosColWidths.fornecedor }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleSortToggle('fornecedor');
+                          }}
                           title="Clique para ordenar por Fornecedor"
                         >
                           <div className="flex items-center justify-between gap-1.5">
@@ -3624,12 +3731,25 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('fornecedor', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
 
                         {/* INSUMO SIENGE */}
                         <th 
-                          className="px-4 py-3.5 min-w-[160px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleSortToggle('insumo')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: pedidosColWidths.insumo }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleSortToggle('insumo');
+                          }}
                           title="Clique para ordenar por Insumo"
                         >
                           <div className="flex items-center justify-between gap-1.5">
@@ -3646,12 +3766,25 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('insumo', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
 
                         {/* PEDIDO / RECEBIDO */}
                         <th 
-                          className="px-4 py-3.5 min-w-[240px] border-r border-slate-855 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleSortToggle('progress')}
+                          className="px-4 py-3.5 border-r border-slate-855 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: pedidosColWidths.relacao }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleSortToggle('progress');
+                          }}
                           title="Clique para ordenar por Quantidade Pedida / Recebida"
                         >
                           <div className="flex items-center justify-between gap-1.5">
@@ -3668,12 +3801,25 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('relacao', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
 
                         {/* STATUS LOGÍSTICO */}
                         <th 
-                          className="px-4 py-3.5 min-w-[140px] border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleSortToggle('status')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: pedidosColWidths.status }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleSortToggle('status');
+                          }}
                           title="Clique para ordenar por Status Logístico"
                         >
                           <div className="flex items-center justify-between gap-1.5">
@@ -3690,10 +3836,32 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('status', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
 
-                        <th className="px-4 py-3.5 text-right font-sans font-semibold text-[10px] uppercase tracking-wider text-slate-400 select-none">
+                        {/* PAINEL DE AÇÕES */}
+                        <th 
+                          className="px-4 py-3.5 text-right font-sans font-semibold text-[10px] uppercase tracking-wider text-slate-400 select-none relative"
+                          style={{ width: pedidosColWidths.acoes }}
+                        >
                           <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Painel de Ações</span>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handlePedidosResizeStart('acoes', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
                       </tr>
                     </thead>
@@ -3747,11 +3915,11 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
 
                               {/* INSUMO SIENGE */}
                               <td className="px-4 py-4">
-                                <div className="font-bold text-slate-100 text-[14px]">
+                                <div className="font-bold text-slate-100 text-[14px] uppercase whitespace-nowrap overflow-hidden text-ellipsis" title={p.insumo}>
                                   {p.insumo}
                                 </div>
                                 {p.descricaoDetalhe && (
-                                  <div className="text-slate-400 text-xs mt-0.5 italic leading-tight">
+                                  <div className="text-slate-400 text-xs mt-0.5 italic leading-tight uppercase whitespace-nowrap overflow-hidden text-ellipsis" title={p.descricaoDetalhe}>
                                     {p.descricaoDetalhe}
                                   </div>
                                 )}
@@ -3766,7 +3934,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   {p.marca && (
                                     <>
                                       <span className="text-slate-700">•</span>
-                                      <span className="text-purple-400/90 font-medium">Marca: {p.marca}</span>
+                                      <span className="text-purple-400/90 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]" title={p.marca}>Marca: {p.marca}</span>
                                     </>
                                   )}
                                 </div>
@@ -4084,17 +4252,25 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
               {/* Table List View */}
               <div className="bg-[#161920] border border-slate-800 rounded-xl overflow-hidden shadow-xl" id="inventory-table-container">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse" id="inventory-list-table">
-                    <thead>
-                      <tr className="text-slate-450 font-semibold border-b border-slate-800 bg-[#12151C] text-[10px] uppercase tracking-wider">
-                        {/* CENTRO DE CUSTO / OBRA */}
+                  <table 
+                    className="w-full text-left text-xs text-slate-300 border-collapse table-fixed" 
+                    id="inventory-list-table"
+                    style={{ width: Object.keys(inventoryColWidths).reduce((sum, key) => sum + inventoryColWidths[key], 0), minWidth: '100%' }}
+                  >
+                    <thead className="bg-[#1C2028] text-slate-400 text-[10px] uppercase font-sans font-semibold tracking-wider border-b border-slate-800">
+                      <tr>
+                        {/* OBRA / C.C */}
                         <th 
-                          className="px-6 py-3.5 text-left text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleInventorySortToggle('obra')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: inventoryColWidths.obra }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('obra');
+                          }}
                           title="Clique para ordenar por Centro de Custo / Obra"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span>Centro de Custo / Obra</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">OBRA / C.C</span>
                             <span className="inline-flex shrink-0">
                               {inventorySortConfig.key === 'obra' ? (
                                 inventorySortConfig.direction === 'asc' ? (
@@ -4107,16 +4283,64 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('obra', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
-
-                        {/* MATERIAL / INSUMO */}
+ 
+                        {/* FORNECEDOR / COMPRADOR */}
                         <th 
-                          className="px-6 py-3.5 text-left text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleInventorySortToggle('insumo')}
-                          title="Clique para ordenar por Material / Insumo"
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: inventoryColWidths.fornecedor }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('fornecedor');
+                          }}
+                          title="Clique para ordenar por Fornecedor / Comprador"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span>Material / Insumo</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">FORNECEDOR / COMPRADOR</span>
+                            <span className="inline-flex shrink-0">
+                              {inventorySortConfig.key === 'fornecedor' ? (
+                                inventorySortConfig.direction === 'asc' ? (
+                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
+                                ) : (
+                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
+                                )
+                              ) : (
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
+                              )}
+                            </span>
+                          </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('fornecedor', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
+                        </th>
+ 
+                        {/* INSUMO / DESCRIÇÃO */}
+                        <th 
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all relative"
+                          style={{ width: inventoryColWidths.insumo }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('insumo');
+                          }}
+                          title="Clique para ordenar por Insumo / Descrição"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Insumo / Descrição</span>
                             <span className="inline-flex shrink-0">
                               {inventorySortConfig.key === 'insumo' ? (
                                 inventorySortConfig.direction === 'asc' ? (
@@ -4129,38 +4353,29 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('insumo', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
-
-                        {/* UNIDADE */}
+ 
+                        {/* ENTRADAS (+) */}
                         <th 
-                          className="px-6 py-3.5 text-center text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all ml-auto"
-                          onClick={() => handleInventorySortToggle('unidade')}
-                          title="Clique para ordenar por Unidade"
-                        >
-                          <div className="flex items-center justify-center gap-1.5">
-                            <span>Unidade</span>
-                            <span className="inline-flex shrink-0">
-                              {inventorySortConfig.key === 'unidade' ? (
-                                inventorySortConfig.direction === 'asc' ? (
-                                  <ArrowUp size={13} className="text-emerald-400 font-bold" />
-                                ) : (
-                                  <ArrowDown size={13} className="text-emerald-400 font-bold" />
-                                )
-                              ) : (
-                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-slate-450 transition-colors opacity-40" />
-                              )}
-                            </span>
-                          </div>
-                        </th>
-
-                        {/* ENTRADAS ACUMULADAS (+) */}
-                        <th 
-                          className="px-6 py-3.5 text-center text-[#10B981] cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleInventorySortToggle('recebido')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all text-center relative"
+                          style={{ width: inventoryColWidths.recebido }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('recebido');
+                          }}
                           title="Clique para ordenar por Entradas Acumuladas"
                         >
                           <div className="flex items-center justify-center gap-1.5">
-                            <span>Entradas Acumuladas (+)</span>
+                            <span className="text-[10px] text-[#10B981] font-semibold uppercase tracking-wider">Entradas (+)</span>
                             <span className="inline-flex shrink-0">
                               {inventorySortConfig.key === 'recebido' ? (
                                 inventorySortConfig.direction === 'asc' ? (
@@ -4169,20 +4384,33 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   <ArrowDown size={13} className="text-emerald-400 font-bold" />
                                 )
                               ) : (
-                                <ArrowUpDown size={13} className="text-[#10B981]/50 group-hover:text-[#10B981] transition-colors opacity-40" />
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-[#10B981] transition-colors opacity-40" />
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('recebido', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
-
-                        {/* BAIXAS REGISTRADAS (-) */}
+ 
+                        {/* BAIXAS (-) */}
                         <th 
-                          className="px-6 py-3.5 text-center text-[#F43F5E] cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleInventorySortToggle('baixado')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all text-center relative"
+                          style={{ width: inventoryColWidths.baixado }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('baixado');
+                          }}
                           title="Clique para ordenar por Baixas Registradas"
                         >
                           <div className="flex items-center justify-center gap-1.5">
-                            <span>Baixas Registradas (-)</span>
+                            <span className="text-[10px] text-[#F43F5E] font-semibold uppercase tracking-wider">Baixas (-)</span>
                             <span className="inline-flex shrink-0">
                               {inventorySortConfig.key === 'baixado' ? (
                                 inventorySortConfig.direction === 'asc' ? (
@@ -4191,20 +4419,33 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   <ArrowDown size={13} className="text-emerald-400 font-bold" />
                                 )
                               ) : (
-                                <ArrowUpDown size={13} className="text-[#F43F5E]/50 group-hover:text-[#F43F5E] transition-colors opacity-40" />
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-[#F43F5E] transition-colors opacity-40" />
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('baixado', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
-
-                        {/* SALDO FÍSICO ATUAL */}
+ 
+                        {/* SALDO ATUAL */}
                         <th 
-                          className="px-6 py-3.5 text-center text-[#FFC800] cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleInventorySortToggle('saldo')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all text-center relative"
+                          style={{ width: inventoryColWidths.saldo }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('saldo');
+                          }}
                           title="Clique para ordenar por Saldo Físico"
                         >
                           <div className="flex items-center justify-center gap-1.5">
-                            <span>Saldo Físico Atual</span>
+                            <span className="text-[10px] text-[#FFC800] font-semibold uppercase tracking-wider">Saldo Atual</span>
                             <span className="inline-flex shrink-0">
                               {inventorySortConfig.key === 'saldo' ? (
                                 inventorySortConfig.direction === 'asc' ? (
@@ -4213,20 +4454,33 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   <ArrowDown size={13} className="text-emerald-400 font-bold" />
                                 )
                               ) : (
-                                <ArrowUpDown size={13} className="text-[#FFC800]/50 group-hover:text-[#FFC800] transition-colors opacity-40" />
+                                <ArrowUpDown size={13} className="text-slate-600 group-hover:text-[#FFC800] transition-colors opacity-40" />
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('saldo', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
-
-                        {/* ÚLTIMA MOVIMENTAÇÃO */}
+ 
+                        {/* ÚLTIMA MOV. */}
                         <th 
-                          className="px-6 py-3.5 text-center text-slate-400 cursor-pointer select-none group hover:bg-slate-800/40 transition-all"
-                          onClick={() => handleInventorySortToggle('ultimaMovimentacao')}
+                          className="px-4 py-3.5 border-r border-slate-850 cursor-pointer select-none group hover:bg-slate-800/40 transition-all text-center relative"
+                          style={{ width: inventoryColWidths.ultimaMovimentacao }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('.resize-handle')) return;
+                            handleInventorySortToggle('ultimaMovimentacao');
+                          }}
                           title="Clique para ordenar por Última Movimentação"
                         >
                           <div className="flex items-center justify-center gap-1.5">
-                            <span>Última Movimentação</span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Última Mov.</span>
                             <span className="inline-flex shrink-0">
                               {inventorySortConfig.key === 'ultimaMovimentacao' ? (
                                 inventorySortConfig.direction === 'asc' ? (
@@ -4239,15 +4493,36 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               )}
                             </span>
                           </div>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('ultimaMovimentacao', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
-
-                        {/* AJUSTES / INVENTÁRIO */}
-                        <th className="px-6 py-3.5 text-center text-slate-400 font-semibold select-none">
-                          Ajustes / Inventário
+ 
+                        {/* PAINEL DE AÇÕES */}
+                        <th 
+                          className="px-4 py-3.5 text-right font-sans font-semibold text-[10px] uppercase tracking-wider text-slate-400 select-none relative"
+                          style={{ width: inventoryColWidths.acoes }}
+                        >
+                          <span>Painel de Ações</span>
+                          <div
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              handleInventoryResizeStart('acoes', e);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 active:bg-emerald-500 bg-slate-800/20 transition-colors z-10"
+                            title="Arraste para ajustar a largura"
+                          />
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/85">
+                    <tbody className="divide-y divide-slate-800/60 bg-[#161920]">
                       {filteredStock.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="text-center py-12 text-slate-500">
@@ -4257,42 +4532,66 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                         </tr>
                       ) : (
                         filteredStock.map((item, idx) => {
+                          const cleanCodeLine = (() => {
+                            const codInsuStr = item.codigo !== undefined && item.codigo !== null ? String(item.codigo) : '';
+                            const codDetStr = item.codDetalhe !== undefined && item.codDetalhe !== null ? String(item.codDetalhe) : '';
+                            const codInsuNum = codInsuStr ? codInsuStr.replace(/[^\d]/g, '') : '';
+                            const codDetNum = codDetStr ? codDetStr.replace(/[^\d]/g, '') : '';
+                            return [codInsuNum, codDetNum].filter(Boolean).join(' / ');
+                          })();
+ 
                           return (
-                            <tr key={idx} className="hover:bg-slate-800/20 transition-colors border-b border-slate-800/40">
-                              {/* 1. Centro de Custo / Obra */}
-                              <td className="px-6 py-2">
-                                <div className="text-white font-bold text-sm tracking-wide uppercase">{item.obra}</div>
-                              </td>
-
-                              {/* 2. Material / Insumo */}
-                              <td className="px-6 py-2">
-                                <div className="text-white font-bold text-sm tracking-wide uppercase">{item.insumo}</div>
-                                {(item.codDetalhe || item.descricaoDetalhe) && (
-                                  <div className="mt-0.5 text-xs text-slate-400 max-w-sm font-sans flex items-center gap-1.5 leading-tight">
-                                    {item.codDetalhe && item.descricaoDetalhe ? (
-                                      <>
-                                        <span className="font-mono font-semibold text-slate-350">{item.codDetalhe}</span>
-                                        <span className="text-slate-500">-</span>
-                                        <span className="text-slate-400 font-medium">{item.descricaoDetalhe}</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        {item.codDetalhe && <span className="font-mono font-semibold text-slate-350">{item.codDetalhe}</span>}
-                                        {item.descricaoDetalhe && <span className="text-slate-400 font-medium">{item.descricaoDetalhe}</span>}
-                                      </>
-                                    )}
-                                  </div>
+                            <tr key={idx} className="hover:bg-slate-800/20 transition-all font-sans">
+                              {/* 1. OBRA / C.C */}
+                              <td className="px-4 py-4 whitespace-normal">
+                                <div className="font-semibold text-slate-200 text-sm whitespace-nowrap overflow-hidden text-ellipsis uppercase" title={item.obra}>
+                                  {item.obra}
+                                </div>
+                                {item.obraId && (
+                                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">Cód: {item.obraId}</div>
                                 )}
                               </td>
-
-                              {/* 3. Unidade */}
-                              <td className="px-6 py-2 text-center font-bold text-xs uppercase text-slate-400 font-sans">
-                                {item.unidade || '-'}
+ 
+                              {/* 2. FORNECEDOR / COMPRADOR */}
+                              <td className="px-4 py-4 whitespace-normal">
+                                <div className="font-semibold text-slate-200 text-sm whitespace-nowrap overflow-hidden text-ellipsis uppercase" title={item.fornecedor || 'Não Especificado'}>
+                                  {item.fornecedor || 'Não especificado'}
+                                </div>
+                                <div className="text-[10.5px] text-slate-500 mt-0.5">
+                                  Comprador: <span className="font-mono uppercase">{item.codComprador || 'Não especificado'}</span>
+                                </div>
                               </td>
-
+ 
+                              {/* 3. INSUMO / DESCRIÇÃO */}
+                              <td className="px-4 py-4">
+                                <div className="font-bold text-slate-100 text-[14px] uppercase whitespace-nowrap overflow-hidden text-ellipsis" title={item.insumo}>
+                                  {item.insumo}
+                                </div>
+                                {item.descricaoDetalhe && (
+                                  <div className="text-slate-400 text-xs mt-0.5 italic leading-tight uppercase whitespace-nowrap overflow-hidden text-ellipsis" title={item.descricaoDetalhe}>
+                                    {item.descricaoDetalhe}
+                                  </div>
+                                )}
+                                <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                                  <span>Unid: <strong className="text-slate-400 uppercase font-mono">{item.unidade || '-'}</strong></span>
+                                  {cleanCodeLine && (
+                                    <>
+                                      <span className="text-slate-700">•</span>
+                                      <span className="font-mono text-slate-400">Cód: {cleanCodeLine}</span>
+                                    </>
+                                  )}
+                                  {item.marca && (
+                                    <>
+                                      <span className="text-slate-700">•</span>
+                                      <span className="text-purple-400/90 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]" title={item.marca}>Marca: {item.marca}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+ 
                               {/* 4. Entradas Acumuladas */}
-                              <td className="px-6 py-2 text-center font-sans">
-                                <div className="text-[#10B981] font-extrabold text-base">
+                              <td className="px-4 py-4 text-center">
+                                <div className="text-[#10B981] font-extrabold text-sm">
                                   {item.recebido.toLocaleString('pt-BR')}
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
@@ -4303,10 +4602,10 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   )}
                                 </div>
                               </td>
-
+ 
                               {/* 5. Baixas Registradas */}
-                              <td className="px-6 py-2 text-center font-sans">
-                                <div className="text-[#F43F5E] font-extrabold text-base">
+                              <td className="px-4 py-4 text-center">
+                                <div className="text-[#F43F5E] font-extrabold text-sm">
                                   {item.baixado.toLocaleString('pt-BR')}
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
@@ -4317,22 +4616,35 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                   )}
                                 </div>
                               </td>
-
+ 
                               {/* 6. Saldo Físico Atual */}
-                              <td className="px-6 py-2 text-center">
+                              <td className="px-4 py-4 text-center">
                                 <div className="inline-block border border-[#FFC800]/40 rounded-lg text-[#FFC800] bg-[#FFC800]/5 px-3 py-1 font-black text-sm tracking-wider font-mono min-w-[70px]">
                                   {item.saldo.toLocaleString('pt-BR')}
                                 </div>
                               </td>
-
+ 
                               {/* 7. Última Movimentação */}
-                              <td className="px-6 py-2 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
-                                {item.ultimaMovimentacao || '-'}
+                              <td className="px-4 py-4 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
+                                {item.ultimaMovimentacao && item.ultimaMovimentacao !== '-' ? item.ultimaMovimentacao.split(' ')[0] : '-'}
                               </td>
-
+ 
                               {/* 8. Ajustes / Inventário */}
-                              <td className="px-6 py-2 text-center">
-                                <div className="flex items-center justify-center gap-2">
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex flex-col gap-1 items-stretch w-[115px] ml-auto">
+                                  <button
+                                    onClick={() => {
+                                      setNewWithdrawObra(item.obra);
+                                      setNewWithdrawInsumo(item.insumo);
+                                      setNewWithdrawQtd(Math.min(10, item.saldo));
+                                      setShowWithdrawModal(true);
+                                    }}
+                                    className="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black rounded uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-rose-950/30 flex items-center justify-center gap-1 hover:scale-[1.02] active:scale-[0.98]"
+                                    title="Registrar baixa de insumo para esta obra"
+                                  >
+                                    <TrendingDown size={11} className="shrink-0" />
+                                    <span>Baixar</span>
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setReconcileItem(item);
@@ -4341,20 +4653,11 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                       setReconcileResponsavel('');
                                       setShowReconcileModal(true);
                                     }}
-                                    className="px-3.5 py-1.5 bg-transparent hover:bg-[#FFC800]/5 border border-[#FFC800]/30 hover:border-[#FFC800] text-[#FFC800] text-[10px] font-black rounded uppercase tracking-wider transition-colors inline-flex items-center gap-1"
+                                    className="w-full py-1 px-2 bg-transparent hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-300 text-[9px] font-semibold rounded uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                                    title="Reconciliar/Ajustar saldo físico atual"
                                   >
-                                    Reconciliar Saldo
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setNewWithdrawObra(item.obra);
-                                      setNewWithdrawInsumo(item.insumo);
-                                      setNewWithdrawQtd(Math.min(10, item.saldo));
-                                      setShowWithdrawModal(true);
-                                    }}
-                                    className="px-3.5 py-1.5 bg-[#F43F5E] hover:bg-rose-500 text-white text-[10px] font-black rounded uppercase tracking-wider transition-colors inline-flex items-center gap-1"
-                                  >
-                                    Baixar Consumo
+                                    <RefreshCw size={9} className="shrink-0 text-slate-500" />
+                                    <span>Reconciliar</span>
                                   </button>
                                 </div>
                               </td>
