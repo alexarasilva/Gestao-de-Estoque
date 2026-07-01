@@ -199,6 +199,7 @@ export interface Pedido {
   status: 'Pendente' | 'Parcial' | 'Entregue' | 'Cancelado';
   dataPedido: string;
   dataChegada?: string;
+  isManualEntrada?: boolean;
   
   // Sienge excel fields
   codComprador?: string;
@@ -300,6 +301,7 @@ export interface Usuario {
   podeReceberMercadoria: boolean;
   podeExcluirPedido: boolean;
   podeExcluirObra: boolean;
+  obrasPermitidas?: string[];
 }
 
 function parseDateTimeString(str: string | undefined): Date | null {
@@ -481,6 +483,27 @@ export default function App() {
     };
   });
 
+  const isObraPermitted = (obraNome: string, obraId?: string) => {
+    if (!currentUser.obrasPermitidas) return true; // No restriction
+    const cleanNome = (obraNome || '').trim().toLowerCase();
+    const cleanId = (obraId || '').trim().toLowerCase();
+    return currentUser.obrasPermitidas.some(perm => {
+      const cleanPerm = perm.trim().toLowerCase();
+      return cleanPerm === cleanNome || (cleanId && cleanPerm === cleanId);
+    });
+  };
+
+  const allowedObrasList = useMemo(() => {
+    if (!currentUser.obrasPermitidas) {
+      return obras; // No restriction
+    }
+    return obras.filter(o => isObraPermitted(o.nome, o.id));
+  }, [obras, currentUser.obrasPermitidas]);
+
+  const allowedListObras = useMemo(() => {
+    return allowedObrasList.map(o => o.nome);
+  }, [allowedObrasList]);
+
   // Initial State: Purchase Orders (Pedidos)
   const [pedidos, setPedidos] = useState<Pedido[]>(() => {
     const saved = localStorage.getItem('construmais_pedidos');
@@ -638,6 +661,12 @@ export default function App() {
   const [newOrderObra, setNewOrderObra] = useState<string>('Residencial Alvorada');
   const [newOrderQtd, setNewOrderQtd] = useState<number>(100);
   const [newOrderUnidade, setNewOrderUnidade] = useState<string>('un');
+  const [showInsumoSuggestions, setShowInsumoSuggestions] = useState<boolean>(false);
+  const [newOrderFornecedor, setNewOrderFornecedor] = useState<string>('Não Especificado');
+  const [suggestedInsumoFornecedor, setSuggestedInsumoFornecedor] = useState<string>('');
+  const [showFornecedorSuggestions, setShowFornecedorSuggestions] = useState<boolean>(false);
+  const [newOrderDescricaoDetalhe, setNewOrderDescricaoDetalhe] = useState<string>('');
+  const [newOrderCodDetalhe, setNewOrderCodDetalhe] = useState<string>('');
 
   // New Withdrawal Form States
   const [newWithdrawObra, setNewWithdrawObra] = useState<string>('Residencial Alvorada');
@@ -1080,6 +1109,7 @@ export default function App() {
   // Filtered pedidos based on date selection
   const pedidosFilteredByDate = useMemo(() => {
     return pedidos.filter(p => {
+      if (p.isManualEntrada) return false;
       if (!p.dataPedido) return false;
       const orderTime = parseDateHelper(p.dataPedido);
       
@@ -1107,7 +1137,9 @@ export default function App() {
   // Derived filtered inventories / orders lists
   const filteredPedidos = useMemo(() => {
     const list = pedidos.filter((p) => {
+      if (p.isManualEntrada) return false;
       const pObra = p.obra || '';
+      if (!isObraPermitted(pObra, p.obraId)) return false;
       const matchObra = selectedObra === 'Todas as Obras' || pObra === selectedObra;
       
       const q = searchQuery.toLowerCase().trim();
@@ -1199,6 +1231,7 @@ export default function App() {
   const filteredStock = useMemo(() => {
     let list = stockInventory.filter((item) => {
       const itemObra = item.obra || '';
+      if (!isObraPermitted(itemObra, item.obraId)) return false;
       const matchObra = selectedObra === 'Todas as Obras' || itemObra === selectedObra;
       
       const q = searchQuery.toLowerCase().trim();
@@ -1241,7 +1274,11 @@ export default function App() {
 
   // Calculated Stats Indicators based on "selectedObra"
   const stats = useMemo(() => {
-    const ordersSubset = pedidos.filter((p) => selectedObra === 'Todas as Obras' || p.obra === selectedObra);
+    const ordersSubset = pedidos.filter((p) => {
+      if (p.isManualEntrada) return false;
+      if (!isObraPermitted(p.obra, p.obraId)) return false;
+      return selectedObra === 'Todas as Obras' || p.obra === selectedObra;
+    });
     
     // 1. Pending (Pendente) orders total
     const pendentes = ordersSubset.filter((p) => p.status === 'Pendente').length;
@@ -1252,7 +1289,10 @@ export default function App() {
     // 3. Critical Stock: Count materials assigned where available stock balance is low relative to their incoming expectations,
     // or when the stock of a needed item is exactly 0 but has active demand.
     // Let's count items where saldo < (recebido * 0.15) or saldo <= 0, but total solicitado is high.
-    const subsetStock = stockInventory.filter((item) => selectedObra === 'Todas as Obras' || item.obra === selectedObra);
+    const subsetStock = stockInventory.filter((item) => {
+      if (!isObraPermitted(item.obra, item.obraId)) return false;
+      return selectedObra === 'Todas as Obras' || item.obra === selectedObra;
+    });
     const estoqueCritico = subsetStock.filter(item => {
       // Stock is critical if there's been some incoming, but available is 0, or is less than 15% of received
       return item.recebido > 0 && (item.saldo <= (item.recebido * 0.15));
@@ -1266,7 +1306,11 @@ export default function App() {
   }, [pedidos, stockInventory, selectedObra]);
 
   const dashboardChartData = useMemo(() => {
-    const ordersSubset = pedidos.filter((p) => selectedObra === 'Todas as Obras' || p.obra === selectedObra);
+    const ordersSubset = pedidos.filter((p) => {
+      if (p.isManualEntrada) return false;
+      if (!isObraPermitted(p.obra, p.obraId)) return false;
+      return selectedObra === 'Todas as Obras' || p.obra === selectedObra;
+    });
     const totalEntregues = ordersSubset.filter((p) => p.status === 'Entregue').length;
     const totalParciais = ordersSubset.filter((p) => p.status === 'Parcial').length;
     const totalPendentes = ordersSubset.filter((p) => p.status === 'Pendente').length;
@@ -1279,7 +1323,10 @@ export default function App() {
   }, [pedidos, selectedObra]);
 
   const dashboardCriticalStockList = useMemo(() => {
-    const subsetStock = stockInventory.filter((item) => selectedObra === 'Todas as Obras' || item.obra === selectedObra);
+    const subsetStock = stockInventory.filter((item) => {
+      if (!isObraPermitted(item.obra, item.obraId)) return false;
+      return selectedObra === 'Todas as Obras' || item.obra === selectedObra;
+    });
     return subsetStock.filter(item => item.recebido > 0 && (item.saldo <= (item.recebido * 0.15)));
   }, [stockInventory, selectedObra]);
 
@@ -1294,13 +1341,15 @@ export default function App() {
   const obrasRecebimentoStats = useMemo(() => {
     const statsMap: { [obra: string]: { recebido: number; solicitado: number } } = {};
     
-    // Initialize for all active obras
-    obras.forEach(o => {
+    // Initialize for all allowed active obras
+    allowedObrasList.forEach(o => {
       statsMap[o.nome] = { recebido: 0, solicitado: 0 };
     });
 
     pedidos.forEach(p => {
+      if (p.isManualEntrada) return;
       if (p.status === 'Cancelado') return;
+      if (!isObraPermitted(p.obra, p.obraId)) return;
       if (!statsMap[p.obra]) {
         statsMap[p.obra] = { recebido: 0, solicitado: 0 };
       }
@@ -1318,7 +1367,7 @@ export default function App() {
         solicitado
       };
     });
-  }, [pedidos, obras]);
+  }, [pedidos, obras, currentUser]);
 
   // Unified list of all entries (Entradas) and withdrawals (Saídas)
   const unifiedMovements = useMemo(() => {
@@ -1327,6 +1376,7 @@ export default function App() {
     // 1. Add received entries from pedidos
     pedidos.forEach((p) => {
       if (p.status === 'Cancelado') return;
+      if (!isObraPermitted(p.obra, p.obraId)) return;
       if (p.qtdRecebida > 0) {
         list.push({
           id: p.id,
@@ -1351,6 +1401,7 @@ export default function App() {
 
     // 2. Add withdrawals from baixas
     baixas.forEach((b) => {
+      if (!isObraPermitted(b.obra, b.obraId)) return;
       const refPedido = pedidos.find(p => (p.codigo && p.codigo === b.codigo) || (p.insumo && p.insumo === b.insumo));
       const isRecons = b.id.startsWith('RE-') || b.destino?.startsWith('Ajuste:');
       list.push({
@@ -1375,7 +1426,7 @@ export default function App() {
 
     // Sort by descending timestamp (latest first)
     return list.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-  }, [pedidos, baixas]);
+  }, [pedidos, baixas, currentUser]);
 
   // Distinct lists extracted dynamically from data for filter select-boxes
   const reportUsersList = useMemo(() => {
@@ -1395,6 +1446,85 @@ export default function App() {
     const set = new Set<string>();
     pedidos.forEach(p => { if (p.fornecedor) set.add(p.fornecedor.trim()); });
     return Array.from(set).sort();
+  }, [pedidos]);
+
+  // Dynamic unit options sent through spreadsheet imports + defaults
+  const allAvailableUnits = useMemo(() => {
+    const unitsSet = new Set<string>();
+    
+    // Default units to ensure baseline ones are always available
+    const defaults = ['un', 'kg', 'm³', 'm²', 'm', 'SC', 'l', 'unidade', 'metro'];
+    defaults.forEach(u => unitsSet.add(u.trim().toLowerCase()));
+
+    // From existing/imported pedidos
+    pedidos.forEach(p => {
+      if (p.unidade) {
+        unitsSet.add(p.unidade.trim().toLowerCase());
+      }
+    });
+
+    // From inventory items
+    stockInventory.forEach(item => {
+      if (item.unidade) {
+        unitsSet.add(item.unidade.trim().toLowerCase());
+      }
+    });
+
+    return Array.from(unitsSet).map(u => {
+      if (u === 'un') return 'un';
+      if (u === 'kg') return 'kg';
+      if (u === 'm³') return 'm³';
+      if (u === 'm²') return 'm²';
+      if (u === 'm') return 'm';
+      if (u === 'sc') return 'SC';
+      if (u === 'l') return 'L';
+      return u;
+    }).sort((a, b) => a.localeCompare(b));
+  }, [pedidos, stockInventory]);
+
+  // Unique list of materials/insumos and their codes/units/details from standard/imported orders
+  const suggestedInsumos = useMemo(() => {
+    const map: Record<string, { insumo: string; codigo: string; unidade: string; fornecedor?: string; descricaoDetalhe?: string; codDetalhe?: string }> = {};
+    pedidos.forEach(p => {
+      if (p.isManualEntrada) return;
+      const nameClean = p.insumo.trim();
+      const detailClean = (p.descricaoDetalhe || '').trim();
+      const key = `${nameClean.toLowerCase()}||${detailClean.toLowerCase()}`;
+      if (nameClean) {
+        if (!map[key]) {
+          map[key] = {
+            insumo: nameClean,
+            codigo: p.codigo && p.codigo !== 'Não Aplicado' ? p.codigo : '',
+            unidade: p.unidade || 'un',
+            fornecedor: p.fornecedor && p.fornecedor !== 'Não Especificado' && p.fornecedor !== '-' ? p.fornecedor : '',
+            descricaoDetalhe: detailClean || undefined,
+            codDetalhe: p.codDetalhe || undefined
+          };
+        } else {
+          if (!map[key].codigo && p.codigo && p.codigo !== 'Não Aplicado') {
+            map[key].codigo = p.codigo;
+          }
+          if (!map[key].fornecedor && p.fornecedor && p.fornecedor !== 'Não Especificado' && p.fornecedor !== '-') {
+            map[key].fornecedor = p.fornecedor;
+          }
+          if (!map[key].codDetalhe && p.codDetalhe) {
+            map[key].codDetalhe = p.codDetalhe;
+          }
+        }
+      }
+    });
+    return Object.values(map).sort((a, b) => a.insumo.localeCompare(b.insumo));
+  }, [pedidos]);
+
+  // Unique list of suppliers/fornecedores from standard/imported orders
+  const suggestedFornecedores = useMemo(() => {
+    const set = new Set<string>();
+    pedidos.forEach(p => {
+      if (p.fornecedor && p.fornecedor.trim() && p.fornecedor !== 'Não Especificado' && p.fornecedor !== '-') {
+        set.add(p.fornecedor.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [pedidos]);
 
   // Dynamically filtered movements based on selected user filters
@@ -1538,7 +1668,7 @@ export default function App() {
       }
 
       const randomId = `PC-2024-0${Math.floor(Math.random() * 900) + 100}`;
-      const resolvedCodigo = newOrderCodigo.trim().toUpperCase() || `INS-${Math.floor(Math.random() * 900) + 100}`;
+      const resolvedCodigo = newOrderCodigo.trim() ? newOrderCodigo.trim().toUpperCase() : 'Não Aplicado';
       const matchedObra = obras.find(o => o.nome === newOrderObra);
       const newPedido: Pedido = {
         id: randomId,
@@ -1547,10 +1677,15 @@ export default function App() {
         obra: newOrderObra,
         obraId: matchedObra ? matchedObra.id : undefined,
         qtdSolicitada: newOrderQtd,
-        qtdRecebida: 0,
+        qtdRecebida: newOrderQtd,
         unidade: newOrderUnidade,
-        status: 'Pendente',
+        status: 'Entregue',
         dataPedido: new Date().toLocaleDateString('pt-BR'),
+        isManualEntrada: true,
+        codComprador: currentUser.nome, // Set to the current logged in user name
+        fornecedor: newOrderFornecedor.trim() || 'Não Especificado',
+        descricaoDetalhe: newOrderDescricaoDetalhe.trim() || undefined,
+        codDetalhe: newOrderCodDetalhe.trim() || undefined,
       };
 
       setPedidos([newPedido, ...pedidos]);
@@ -1558,7 +1693,11 @@ export default function App() {
       setShowOrderModal(false);
       setNewOrderInsumo('');
       setNewOrderCodigo('');
-      triggerToast(`Pedido ${randomId} cadastrado com sucesso para ${newOrderObra}!`, 'success');
+      setNewOrderFornecedor('Não Especificado');
+      setSuggestedInsumoFornecedor('');
+      setNewOrderDescricaoDetalhe('');
+      setNewOrderCodDetalhe('');
+      triggerToast(`Entrada manual de ${newOrderQtd} ${newOrderUnidade} cadastrada com sucesso para ${newOrderObra}!`, 'success');
     });
   };
 
@@ -2777,12 +2916,69 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
     }));
   };
 
+  const handleToggleObraAccess = (userId: string, obraId: string, allowed: boolean) => {
+    setUsuarios(prev => prev.map(u => {
+      if (u.id === userId) {
+        let currentPerms = u.obrasPermitidas ? [...u.obrasPermitidas] : obras.map(o => o.id);
+        if (allowed) {
+          if (!currentPerms.includes(obraId)) {
+            currentPerms.push(obraId);
+          }
+        } else {
+          currentPerms = currentPerms.filter(id => id !== obraId);
+        }
+        const updated = { ...u, obrasPermitidas: currentPerms };
+        if (currentUser.id === userId) {
+          setCurrentUser(updated);
+        }
+        return updated;
+      }
+      return u;
+    }));
+  };
+
+  const handleSetAccessMode = (userId: string, mode: 'total' | 'restrito') => {
+    setUsuarios(prev => prev.map(u => {
+      if (u.id === userId) {
+        const updated = { 
+          ...u, 
+          obrasPermitidas: mode === 'total' ? undefined : [] 
+        };
+        if (currentUser.id === userId) {
+          setCurrentUser(updated);
+        }
+        return updated;
+      }
+      return u;
+    }));
+  };
+
   const handleSwitchSimulatorUser = (u: Usuario) => {
     setCurrentUser(u);
     // If the non-admin tab is selected but we switch away from admin tabs, make sure we redirect to panel
     if (u.role !== 'Administrador' && currentTab === 'admin') {
       setCurrentTab('painel');
     }
+    
+    // Safety check for selectedObra permissions under the switched user
+    const targetObrasList = u.obrasPermitidas 
+      ? obras.filter(o => {
+          const cleanNome = o.nome.trim().toLowerCase();
+          const cleanId = (o.id || '').trim().toLowerCase();
+          return u.obrasPermitidas?.some(p => {
+            const cleanPerm = p.trim().toLowerCase();
+            return cleanPerm === cleanNome || cleanPerm === cleanId;
+          });
+        })
+      : obras;
+    
+    if (selectedObra !== 'Todas as Obras') {
+      const isAllowed = targetObrasList.some(o => o.nome === selectedObra);
+      if (!isAllowed) {
+        setSelectedObra('Todas as Obras');
+      }
+    }
+
     triggerToast(`Sessão operante alterada para: ${u.nome} (${u.role})`, 'info');
   };
 
@@ -3099,7 +3295,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 className="bg-[#1F242D] border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-white font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none cursor-pointer"
               >
                 <option value="Todas as Obras">Todas as Obras</option>
-                {listObras.map((o) => (
+                {allowedListObras.map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
@@ -3115,42 +3311,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           </div>
 
           <div className="flex gap-2.5">
-            {currentTab !== 'pedidos' && currentTab !== 'painel' && (
-              <>
-                <button
-                  id="btn-baixa-material"
-                  onClick={() => {
-                    // Prepopulate current work selection if valid
-                    if (listObras.includes(selectedObra)) {
-                      setNewWithdrawObra(selectedObra);
-                    } else {
-                      setNewWithdrawObra('Residencial Alvorada');
-                    }
-                    setNewWithdrawInsumo('');
-                    setNewWithdrawQtd(10);
-                    setShowWithdrawModal(true);
-                  }}
-                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-sm font-medium border border-slate-700 transition-all flex items-center gap-1.5"
-                >
-                  <ArrowRightLeft size={15} className="text-slate-300" />
-                  Baixa de Material
-                </button>
-                
-                <button
-                  id="btn-nova-entrada"
-                  onClick={() => {
-                    if (listObras.includes(selectedObra)) {
-                      setNewOrderObra(selectedObra);
-                    }
-                    setShowOrderModal(true);
-                  }}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-medium transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/10"
-                >
-                  <Plus size={16} />
-                  Nova Entrada
-                </button>
-              </>
-            )}
+            {/* Action buttons removed from global header as requested */}
           </div>
         </header>
 
@@ -3165,7 +3326,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
             <div>
               <h3 className="text-xs font-semibold text-emerald-400">Gestão Integrada de Obras Ativas</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Utilize o menu superior para filtrar estatísticas e acompanhar as entregas locais em tempo real. Adicione novos pedidos de insumos clicando em <strong>Nova Entrada</strong>, ou gaste o estoque com <strong>Baixa de Material</strong>.
+                Utilize o menu superior para filtrar estatísticas e acompanhar as entregas locais em tempo real. Adicione novos recebimentos na página <strong className="text-emerald-400">Estoque por Obra</strong>, ou registre baixas de materiais diretamente nas linhas de insumos disponíveis.
               </p>
             </div>
           </div>
@@ -3468,38 +3629,40 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   <h2 className="text-xl font-sans font-extrabold text-white">Gestão Integrada de Pedidos</h2>
                   <p className="text-sm text-slate-400 mt-1">Acompanhe, filtre e configure o status das compras ativas de materiais e ferragens para as obras.</p>
                 </div>
-                <div className="flex flex-wrap gap-2.5">
-                  <button
-                    onClick={() => setShowOrderModal(true)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-semibold transition-all flex items-center gap-2"
-                  >
-                    <Plus size={16} /> Solicitando Novo Pedido
-                  </button>
-                  <button
-                    onClick={() => {
-                      setParsedImportItems([]);
-                      setImportedFileName('');
-                      setImportStats(null);
-                      setShowImportModal(true);
-                    }}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-705 rounded-md text-sm font-semibold transition-all flex items-center gap-2"
-                  >
-                    <FileSpreadsheet size={16} className="text-emerald-450" />
-                    Importar Tabela Sienge
-                  </button>
-                  <button
-                    onClick={() => {
-                      executeGuardedAction('admin', 'Zerar Banco de Dados de Pedidos e Baixas', () => {
-                        setShowClearConfirmModal(true);
-                      });
-                    }}
-                    className="px-4 py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-550/25 rounded-md text-sm font-semibold transition-all flex items-center gap-2"
-                    title="Excluir todos os pedidos para carregar uma nova planilha limpa"
-                  >
-                    <Trash2 size={16} />
-                    Limpar Base (Zerar)
-                  </button>
-                </div>
+                {currentUser.role === 'Administrador' && (
+                  <div className="flex flex-wrap gap-2.5">
+                    <button
+                      onClick={() => setShowOrderModal(true)}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-semibold transition-all flex items-center gap-2"
+                    >
+                      <Plus size={16} /> Solicitando Novo Pedido
+                    </button>
+                    <button
+                      onClick={() => {
+                        setParsedImportItems([]);
+                        setImportedFileName('');
+                        setImportStats(null);
+                        setShowImportModal(true);
+                      }}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-705 rounded-md text-sm font-semibold transition-all flex items-center gap-2"
+                    >
+                      <FileSpreadsheet size={16} className="text-emerald-450" />
+                      Importar Tabela Sienge
+                    </button>
+                    <button
+                      onClick={() => {
+                        executeGuardedAction('admin', 'Zerar Banco de Dados de Pedidos e Baixas', () => {
+                          setShowClearConfirmModal(true);
+                        });
+                      }}
+                      className="px-4 py-2 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-550/25 rounded-md text-sm font-semibold transition-all flex items-center gap-2"
+                      title="Excluir todos os pedidos para carregar uma nova planilha limpa"
+                    >
+                      <Trash2 size={16} />
+                      Limpar Base (Zerar)
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Status breakdown metrics */}
@@ -4210,10 +4373,29 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
           {/* VIEW TAB 3: ESTOQUE POR OBRA */}
           {currentTab === 'estoque' && (
             <div className="space-y-6" id="estoque-tab-view">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-sans font-extrabold text-white">Disponibilidade e Saldos de Estoque</h2>
                   <p className="text-sm text-slate-400 mt-0.5">Visão do inventário em lista considerando as entradas recebidas menos as baixas locais em obra.</p>
+                </div>
+                <div className="shrink-0">
+                  <button
+                    id="btn-nova-entrada-estoque"
+                    onClick={() => {
+                      if (allowedListObras.includes(selectedObra)) {
+                        setNewOrderObra(selectedObra);
+                      } else if (allowedListObras.length > 0) {
+                        setNewOrderObra(allowedListObras[0]);
+                      } else {
+                        setNewOrderObra('Residencial Alvorada');
+                      }
+                      setShowOrderModal(true);
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-emerald-900/10"
+                  >
+                    <Plus size={16} />
+                    Nova Entrada
+                  </button>
                 </div>
               </div>
 
@@ -4596,7 +4778,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-mono mt-0.5 whitespace-nowrap">
                                   {item.dataUltimaEntrada && item.dataUltimaEntrada !== '-' ? (
-                                    item.dataUltimaEntrada
+                                    item.dataUltimaEntrada.split(' ')[0]
                                   ) : (
                                     '-'
                                   )}
@@ -4729,7 +4911,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                       className="w-full bg-[#1F242D] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="Todas as Obras">Todas as Obras</option>
-                      {obras.map((o) => (
+                      {allowedObrasList.map((o) => (
                         <option key={o.id} value={o.nome}>{o.nome}</option>
                       ))}
                     </select>
@@ -4992,7 +5174,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                               
                               {/* DATA / HORA */}
                               <td className="py-4 px-5 font-mono text-slate-400 whitespace-nowrap overflow-hidden text-ellipsis">
-                                {item.data}
+                                {isEntrada ? item.data.split(' ')[0] : item.data}
                               </td>
 
                               {/* TIPO badge in layout format */}
@@ -5482,6 +5664,63 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                             </div>
                           </div>
 
+                          {/* Access Control by Obra */}
+                          <div className="p-3 bg-[#161920]/40 rounded-lg border border-slate-800/80 mt-2 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider block">
+                                Controle de Acesso por Obra:
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-slate-300 select-none">
+                                  <input
+                                    type="radio"
+                                    name={`access-mode-${usr.id}`}
+                                    checked={usr.obrasPermitidas === undefined}
+                                    onChange={() => handleSetAccessMode(usr.id, 'total')}
+                                    className="text-emerald-500 bg-slate-905 border-slate-800 focus:ring-0"
+                                  />
+                                  Acesso Total
+                                </label>
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-slate-300 select-none">
+                                  <input
+                                    type="radio"
+                                    name={`access-mode-${usr.id}`}
+                                    checked={usr.obrasPermitidas !== undefined}
+                                    onChange={() => handleSetAccessMode(usr.id, 'restrito')}
+                                    className="text-emerald-500 bg-slate-905 border-slate-800 focus:ring-0"
+                                  />
+                                  Restrito
+                                </label>
+                              </div>
+                            </div>
+
+                            {usr.obrasPermitidas !== undefined ? (
+                              <div className="p-2.5 bg-slate-950/60 rounded border border-slate-900 grid grid-cols-1 gap-1.5 max-h-[120px] overflow-y-auto">
+                                {obras.map((o) => {
+                                  const hasAccess = usr.obrasPermitidas?.includes(o.id) || usr.obrasPermitidas?.includes(o.nome);
+                                  return (
+                                    <label key={o.id} className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-400 hover:text-white transition-all select-none">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!hasAccess}
+                                        onChange={(e) => handleToggleObraAccess(usr.id, o.id, e.target.checked)}
+                                        className="rounded text-emerald-600 bg-slate-905 border-slate-800 focus:ring-emerald-500 focus:ring-0 w-3.5 h-3.5"
+                                      />
+                                      {(o.id && o.id !== 'undefined') ? `[${o.id}] ${o.nome}` : o.nome}
+                                    </label>
+                                  );
+                                })}
+                                {obras.length === 0 && (
+                                  <span className="text-[10px] text-slate-600 italic">Nenhuma obra cadastrada</span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-slate-400 italic bg-emerald-950/10 border border-emerald-900/20 p-2 rounded text-center">
+                                Este usuário pode visualizar e interagir com todas as obras.
+                              </div>
+                            )}
+                          </div>
+
                           {/* Delete operator button */}
                           {usr.id !== currentUser.id && (
                             <div className="flex justify-end mt-1">
@@ -5738,22 +5977,89 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   onChange={(e) => setNewOrderObra(e.target.value)}
                   className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-sm rounded-lg p-2.5 focus:border-emerald-500 focus:outline-none"
                 >
-                  {listObras.map((o) => (
+                  {allowedListObras.map((o) => (
                     <option key={o} value={o}>{o}</option>
                   ))}
                 </select>
               </div>
 
               {/* Material/Insumo Name input */}
-              <div>
+              <div className="relative">
                 <label className="text-xs text-slate-400 font-semibold block mb-1.5">Nome do Insumo (especificar tipo/medida):</label>
                 <input
                   type="text"
                   placeholder="Ex: Cimento CP-II 50kg, Areia Fina..."
                   value={newOrderInsumo}
-                  onChange={(e) => setNewOrderInsumo(e.target.value)}
+                  onChange={(e) => {
+                    setNewOrderInsumo(e.target.value);
+                    setShowInsumoSuggestions(true);
+                  }}
+                  onFocus={() => setShowInsumoSuggestions(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowInsumoSuggestions(false), 250);
+                  }}
                   className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none placeholder-slate-600"
                 />
+
+                {showInsumoSuggestions && newOrderInsumo.trim().length > 0 && (
+                  <div className="absolute left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto bg-[#1C2028] border border-slate-700 rounded-lg shadow-2xl divide-y divide-slate-800 scrollbar-thin scrollbar-thumb-slate-700">
+                    {(() => {
+                      const filtered = suggestedInsumos.filter(item => {
+                        const searchStr = `${item.insumo} ${item.descricaoDetalhe || ''}`.toLowerCase();
+                        return searchStr.includes(newOrderInsumo.toLowerCase());
+                      });
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="px-3.5 py-2.5 text-xs text-slate-500 italic">
+                            Nenhuma sugestão encontrada
+                          </div>
+                        );
+                      }
+                      return filtered.slice(0, 10).map((item, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onMouseDown={() => {
+                            setNewOrderInsumo(item.insumo);
+                            if (item.codigo) setNewOrderCodigo(item.codigo);
+                            if (item.unidade) setNewOrderUnidade(item.unidade);
+                            if (item.descricaoDetalhe) {
+                              setNewOrderDescricaoDetalhe(item.descricaoDetalhe);
+                            } else {
+                              setNewOrderDescricaoDetalhe('');
+                            }
+                            if (item.codDetalhe) {
+                              setNewOrderCodDetalhe(item.codDetalhe);
+                            } else {
+                              setNewOrderCodDetalhe('');
+                            }
+                            if (item.fornecedor) {
+                              setSuggestedInsumoFornecedor(item.fornecedor);
+                            } else {
+                              setSuggestedInsumoFornecedor('');
+                            }
+                            setShowInsumoSuggestions(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-[#252A36] text-sm text-slate-300 transition-colors flex items-center justify-between"
+                        >
+                          <div className="flex flex-col min-w-0 flex-1 pr-2">
+                            <span className="font-medium text-slate-200 truncate">{item.insumo}</span>
+                            {item.descricaoDetalhe && (
+                              <span className="text-xs text-slate-400 italic truncate mt-0.5">
+                                {item.descricaoDetalhe} {item.codDetalhe && <span className="text-[10px] font-mono text-slate-500">[{item.codDetalhe}]</span>}
+                              </span>
+                            )}
+                          </div>
+                          {item.codigo && (
+                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-900/40 shrink-0">
+                              {item.codigo}
+                            </span>
+                          )}
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* Código do Insumo (opcional / auto-gerado) */}
@@ -5761,10 +6067,22 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                 <label className="text-xs text-slate-400 font-semibold block mb-1.5">Código do Insumo (Opcional):</label>
                 <input
                   type="text"
-                  placeholder="Ex: CIM-001 (Vazio para auto-gerar)"
+                  placeholder="Ex: CIM-001 (Vazio deixará como Não Aplicado)"
                   value={newOrderCodigo}
                   onChange={(e) => setNewOrderCodigo(e.target.value)}
                   className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none placeholder-slate-600 font-mono"
+                />
+              </div>
+
+              {/* Especificação / Detalhe (Opcional) */}
+              <div>
+                <label className="text-xs text-slate-400 font-semibold block mb-1.5">Especificação / Detalhe (Opcional):</label>
+                <input
+                  type="text"
+                  placeholder="Ex: CP-II 50kg, Areia Média Lavada..."
+                  value={newOrderDescricaoDetalhe}
+                  onChange={(e) => setNewOrderDescricaoDetalhe(e.target.value)}
+                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none placeholder-slate-600"
                 />
               </div>
 
@@ -5789,14 +6107,103 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                     onChange={(e) => setNewOrderUnidade(e.target.value)}
                     className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-sm rounded-lg p-2.5 focus:border-emerald-500 focus:outline-none"
                   >
-                    <option value="un">un (unidade)</option>
-                    <option value="kg">kg (quilograma)</option>
-                    <option value="m³">m³ (metro cúbico)</option>
-                    <option value="m²">m² (metro quadrado)</option>
-                    <option value="m">m (metro linear)</option>
+                    {allAvailableUnits.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
+              </div>
+
+              {/* Fornecedor (Supplier) input */}
+              <div className="relative">
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-xs text-slate-400 font-semibold block">Fornecedor:</label>
+                  {suggestedInsumoFornecedor && suggestedInsumoFornecedor !== newOrderFornecedor && (
+                    <button
+                      type="button"
+                      onClick={() => setNewOrderFornecedor(suggestedInsumoFornecedor)}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-900/40 transition-all cursor-pointer"
+                    >
+                      💡 Sugerir: {suggestedInsumoFornecedor}
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: Votorantim, Gerdau..."
+                  value={newOrderFornecedor}
+                  onChange={(e) => {
+                    setNewOrderFornecedor(e.target.value);
+                    setShowFornecedorSuggestions(true);
+                  }}
+                  onFocus={() => setShowFornecedorSuggestions(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowFornecedorSuggestions(false), 250);
+                  }}
+                  className="w-full bg-[#0F1115] border border-slate-700 rounded-lg p-2.5 text-sm text-slate-300 focus:border-emerald-500 focus:outline-none placeholder-slate-600"
+                />
+
+                {showFornecedorSuggestions && (
+                  <div className="absolute left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto bg-[#1C2028] border border-slate-700 rounded-lg shadow-2xl divide-y divide-slate-800 scrollbar-thin scrollbar-thumb-slate-700">
+                    {(() => {
+                      const typedValue = newOrderFornecedor === 'Não Especificado' ? '' : newOrderFornecedor;
+                      const filtered = suggestedFornecedores.filter(supplier =>
+                        supplier.toLowerCase().includes(typedValue.toLowerCase())
+                      );
+                      
+                      const showNaoEspecificado = 'Não Especificado'.toLowerCase().includes(typedValue.toLowerCase()) && newOrderFornecedor !== 'Não Especificado';
+
+                      if (filtered.length === 0 && !showNaoEspecificado) {
+                        return (
+                          <div className="px-3.5 py-2.5 text-xs text-slate-500 italic">
+                            Nenhum fornecedor encontrado
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {showNaoEspecificado && (
+                            <button
+                              type="button"
+                              onMouseDown={() => {
+                                setNewOrderFornecedor('Não Especificado');
+                                setShowFornecedorSuggestions(false);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-[#252A36] text-sm text-amber-400 font-medium transition-colors"
+                            >
+                              Não Especificado (Padrão)
+                            </button>
+                          )}
+                          {filtered.slice(0, 8).map((supplier, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onMouseDown={() => {
+                                setNewOrderFornecedor(supplier);
+                                setShowFornecedorSuggestions(false);
+                              }}
+                              className="w-full text-left px-3.5 py-2 hover:bg-[#252A36] text-sm text-slate-300 transition-colors"
+                            >
+                              {supplier}
+                            </button>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* Comprador (Buyer - read-only / auto-detected) */}
+              <div className="bg-[#0F1115] border border-slate-850 rounded-lg p-3 text-xs flex justify-between items-center text-slate-400">
+                <span className="font-semibold">Cadastrado por (Entrada Manual):</span>
+                <span className="font-mono text-emerald-400 font-bold bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-900/40">
+                  {currentUser.nome}
+                </span>
               </div>
 
               {/* Footer Form row */}
@@ -5812,7 +6219,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   type="submit"
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-sm font-semibold transition-all"
                 >
-                  Adicionar Pedido
+                  Confirmar Entrada
                 </button>
               </div>
 
@@ -6295,7 +6702,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   value={editingPedido.obra}
                   onChange={(e) => {
                     const selectedName = e.target.value;
-                    const matchedObra = obras.find(o => o.nome === selectedName);
+                    const matchedObra = allowedObrasList.find(o => o.nome === selectedName);
                     setEditingPedido({ 
                       ...editingPedido, 
                       obra: selectedName,
@@ -6304,7 +6711,7 @@ Você pode subir o código do Front-end na Vercel de forma ultra rápida:
                   }}
                   className="w-full bg-[#0F1115] border border-slate-700 text-slate-300 text-xs rounded-lg p-2.5 focus:border-purple-500 focus:outline-none"
                 >
-                  {obras.map((o) => (
+                  {allowedObrasList.map((o) => (
                     <option key={o.id} value={o.nome}>{(o.id && o.id !== 'undefined') ? `[${o.id}] ${o.nome}` : o.nome}</option>
                   ))}
                 </select>
